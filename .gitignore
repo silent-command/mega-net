@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Build outputs
+/bin/
+/build/
+
+# Compiler intermediates
+*.o
+*.elf
+
+# Python bytecode from build.py
+__pycache__/
+*.swp
+*.swo
+*.swn
