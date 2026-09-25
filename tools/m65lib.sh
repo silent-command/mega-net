@@ -42,6 +42,11 @@ put_d81() { reset; sleep 2; $M65FTP -l "$MEGA65_PORT" -c "cd net-tools" -c "del 
 # stage_d81 NAME / unstage_d81 NAME: a copy of a net-tools disk at the
 # root, for the length of one test run.
 #
+# Every serial call here is bounded (perl alarm): an unbounded
+# mega65_ftp against a machine that is off, or a port someone else holds,
+# hangs for as long as it is allowed and shows nothing (2026-09-25, and
+# the same lesson in 2026-09-22's notes).
+#
 # NOTHING in the toolchain can mount from a subdirectory: BASIC's MOUNT
 # answers FILE NOT FOUND for "net-tools/X.D81" and ignores a CHDIR, and
 # mega65_ftp says outright "Mounting of files in subdirectories not yet
@@ -52,11 +57,13 @@ put_d81() { reset; sleep 2; $M65FTP -l "$MEGA65_PORT" -c "cd net-tools" -c "del 
 # could have answered in its place.
 stage_d81() {
   local tmp="/tmp/m65-stage-$1"
-  $M65FTP -l "$MEGA65_PORT" -c "cd net-tools" -c "get $1 $tmp" -c "exit" >/dev/null 2>&1
-  [ -s "$tmp" ] || { echo "stage_d81: could not fetch $1 from net-tools" >&2; return 1; }
-  $M65FTP -l "$MEGA65_PORT" -c "del $1" -c "put $tmp $1" -c "exit" >/dev/null 2>&1
+  reset; sleep 2                                   # mega65_ftp stalls with a program in memory, as put_d81 knows; boot_prg resets again anyway
+  : > "$tmp"                                       # or a stale copy from an earlier run passes the check below
+  perl -e 'alarm 120; exec @ARGV' $M65FTP -l "$MEGA65_PORT" -c "cd net-tools" -c "get $1 $tmp" -c "exit" >/dev/null 2>&1
+  [ -s "$tmp" ] || { echo "stage_d81: could not fetch $1 from net-tools (machine off, or port held?)" >&2; return 1; }
+  perl -e 'alarm 120; exec @ARGV' $M65FTP -l "$MEGA65_PORT" -c "del $1" -c "put $tmp $1" -c "exit" >/dev/null 2>&1
 }
-unstage_d81() { reset; sleep 2; $M65FTP -l "$MEGA65_PORT" -c "del $1" -c "exit" >/dev/null 2>&1; }
+unstage_d81() { reset; sleep 2; perl -e 'alarm 60; exec @ARGV' $M65FTP -l "$MEGA65_PORT" -c "del $1" -c "exit" >/dev/null 2>&1; }
 
 # boot_prg DISK PRG PATTERN [TRIES]: stage the disk at the root, then
 # reset, mount, run, and wait up to a minute for PATTERN; the start-up
