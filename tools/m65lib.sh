@@ -84,7 +84,9 @@ stage_d81() {
   : > "$tmp"                                       # or a stale copy from an earlier run passes the check below
   perl -e 'alarm 120; exec @ARGV' $M65FTP -l "$MEGA65_PORT" -c "cd net-tools" -c "get $1 $tmp" -c "exit" >/dev/null 2>&1
   [ -s "$tmp" ] || { echo "stage_d81: could not fetch $1 from net-tools (machine off, or port held?)" >&2; return 1; }
-  perl -e 'alarm 120; exec @ARGV' $M65FTP -l "$MEGA65_PORT" -c "del $1" -c "put $tmp $1" -c "exit" >/dev/null 2>&1
+  reset; sleep 2                                   # a second card session straight after the first stalls (2026-09-29)
+  perl -e 'alarm 120; exec @ARGV' $M65FTP -l "$MEGA65_PORT" -c "del $1" -c "put $tmp $1" -c "exit" >/dev/null 2>&1 \
+    || { echo "stage_d81: the upload of $1 did not finish" >&2; return 1; }
 }
 unstage_d81() { reset; sleep 2; perl -e 'alarm 60; exec @ARGV' $M65FTP -l "$MEGA65_PORT" -c "del $1" -c "exit" >/dev/null 2>&1; }
 
