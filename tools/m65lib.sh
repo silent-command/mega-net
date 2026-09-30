@@ -4,9 +4,8 @@
 # never a backslash, never a screenshot while an SSH session is running.
 #
 #   source ../mega-net/tools/m65lib.sh
-#   put_d81 bin/FTPC.D81 FTPC.D81          replace a disk in net-tools (resets first)
-#   boot_prg ftpc.d81 ftpc 'ost:'          stage, mount, run, wait for the first screen
-#   unstage_d81 ftpc.d81                   remove the staged copy when the run is done
+#   put_d81 bin/FTPC.D81 FTPC.D81          replace a disk at the card root (resets first)
+#   boot_prg ftpc.d81 ftpc 'ost:'          mount, run, wait for the first screen
 #   type_line '192.168.1.232'              a line and RETURN
 #   type_keys 'q~M'                        keys, with the m65 escapes
 #   wait_for 'entr' 20                     seconds until the word appears, or a message
@@ -55,44 +54,19 @@ reset() { perl -e 'alarm 20; exec @ARGV' $M65 -F >/dev/null 2>&1; }
 wait_for() { local t=0 max=${2:-30}; while [ $t -lt $max ]; do raw | grep -qi -- "$1" && { echo "$t"; return 0; }; sleep 1; t=$((t+1)); done; echo "timeout ${max}s waiting for '$1'" >&2; return 1; }
 wait_gone() { local t=0 max=${2:-30}; while [ $t -lt $max ]; do raw | grep -qi -- "$1" || { echo "$t"; return 0; }; sleep 1; t=$((t+1)); done; echo "timeout ${max}s waiting for '$1' to go" >&2; return 1; }
 
-# put_d81 FILE NAME: a disk image into net-tools on the card, replacing
-# NAME. The disks live in net-tools rather than the root since
-# 2026-09-23. mega65_ftp refuses to run with a program in memory, so the
-# machine is reset first.
-put_d81() { port_guard || return 1; reset; sleep 2; perl -e 'alarm 300; exec @ARGV' $M65FTP -l "$MEGA65_PORT" -c "cd net-tools" -c "del $2" -c "put $1 $2" 2>&1 | grep -q 'in [0-9]* seconds' && echo "put $2"; }
+# put_d81 FILE NAME: a disk image onto the card, replacing NAME. The
+# disks live at the card's ROOT since 2026-09-29 (the user's call):
+# BASIC's MOUNT reaches them directly, and the net-tools folder, which
+# mega65_ftp could no longer create new files in, is retired. The del
+# runs in its own session (a del and a put in one stalled the card,
+# 2026-09-29), and a put onto a zero-byte leftover stalls too, which
+# the del clears. mega65_ftp refuses to run with a program in memory,
+# so the machine is reset before each session.
+put_d81() { port_guard || return 1; reset; sleep 2; perl -e 'alarm 60; exec @ARGV' $M65FTP -l "$MEGA65_PORT" -c "del $2" -c "exit" >/dev/null 2>&1; reset; sleep 2; perl -e 'alarm 300; exec @ARGV' $M65FTP -l "$MEGA65_PORT" -c "put $1 $2" 2>&1 | grep -q 'in [0-9]* seconds' && echo "put $2"; }
 
-# stage_d81 NAME / unstage_d81 NAME: a copy of a net-tools disk at the
-# root, for the length of one test run.
-#
-# Every serial call here is bounded (perl alarm): an unbounded
-# mega65_ftp against a machine that is off, or a port someone else holds,
-# hangs for as long as it is allowed and shows nothing (2026-09-25, and
-# the same lesson in 2026-09-22's notes).
-#
-# NOTHING in the toolchain can mount from a subdirectory: BASIC's MOUNT
-# answers FILE NOT FOUND for "net-tools/X.D81" and ignores a CHDIR, and
-# mega65_ftp says outright "Mounting of files in subdirectories not yet
-# implemented". So the only way to drive a program from a script is to
-# put its disk at the root first and take it away afterwards. A human at
-# the machine uses the Freezer's browser instead, which does walk
-# directories. Measured 2026-09-23 against an empty root, so no root copy
-# could have answered in its place.
-stage_d81() {
-  local tmp="/tmp/m65-stage-$1"
-  port_guard || return 1
-  reset; sleep 2                                   # mega65_ftp stalls with a program in memory, as put_d81 knows; boot_prg resets again anyway
-  : > "$tmp"                                       # or a stale copy from an earlier run passes the check below
-  perl -e 'alarm 120; exec @ARGV' $M65FTP -l "$MEGA65_PORT" -c "cd net-tools" -c "get $1 $tmp" -c "exit" >/dev/null 2>&1
-  [ -s "$tmp" ] || { echo "stage_d81: could not fetch $1 from net-tools (machine off, or port held?)" >&2; return 1; }
-  reset; sleep 2                                   # a second card session straight after the first stalls (2026-09-29)
-  perl -e 'alarm 120; exec @ARGV' $M65FTP -l "$MEGA65_PORT" -c "del $1" -c "put $tmp $1" -c "exit" >/dev/null 2>&1 \
-    || { echo "stage_d81: the upload of $1 did not finish" >&2; return 1; }
-}
-unstage_d81() { reset; sleep 2; perl -e 'alarm 60; exec @ARGV' $M65FTP -l "$MEGA65_PORT" -c "del $1" -c "exit" >/dev/null 2>&1; }
-
-# boot_prg DISK PRG PATTERN [TRIES]: stage the disk at the root, then
-# reset, mount, run, and wait up to a minute for PATTERN; the start-up
-# stick (about one boot in twenty, mega-net 5.18) is retried. Call
-# unstage_d81 DISK when the run is finished, or the copy stays at the
-# root. Staging costs one download and one upload, about twelve seconds.
-boot_prg() { local try t tries=${4:-4}; stage_d81 "$1" || return 1; for try in $(seq 1 $tries); do reset; wait_for 'READY' 8 >/dev/null; type_line "mount \"$1\""; sleep 1; type_line "run \"$2\""; if t=$(wait_for "$3" 60 2>/dev/null); then echo "booted on try $try (${t}s)"; return 0; fi; echo "try $try stuck at '$(row 23)'"; done; return 1; }
+# boot_prg DISK PRG PATTERN [TRIES]: reset, mount, run, and wait up to a
+# minute for PATTERN; the start-up stick (about one boot in twenty,
+# mega-net 5.18) is retried. The disk is mounted where it lives, so
+# there is no staging and nothing to clean up (stage_d81/unstage_d81
+# are gone with the net-tools folder, 2026-09-29).
+boot_prg() { local try t tries=${4:-4}; port_guard || return 1; for try in $(seq 1 $tries); do reset; wait_for 'READY' 8 >/dev/null; type_line "mount \"$1\""; sleep 1; type_line "run \"$2\""; if t=$(wait_for "$3" 60 2>/dev/null); then echo "booted on try $try (${t}s)"; return 0; fi; echo "try $try stuck at '$(row 23)'"; done; return 1; }
