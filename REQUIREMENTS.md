@@ -1074,3 +1074,14 @@ started (the same build failed four in ten before). What the controller
 does at the end of a transmit that a returning CPU collides with is not
 known; this stays clear of it at the cost of the frame's own time on
 the wire.
+
+Verified with 0.4 on every family client: seven programs from the
+combined disk, five boots each, SSH and SFTP five more each in 80x50,
+and Gemini from its own disk five times; all started. An SSH login and
+shell worked from the combined disk.
+
+**Carried.** The BASIC test program, `MNBASIC`, gets its lease and
+then stops in its 30-second polling loop. Each of three runs either
+hit a BASIC error (`?SYNTAX ERROR` or `?ILLEGAL QUANTITY ERROR` in
+lines 1000-1010) or hung. 0.3's disk does the same, so it is older
+than this fix and affects BASIC callers only.
