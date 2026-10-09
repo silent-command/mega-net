@@ -75,14 +75,18 @@ job or a bank must see.
 
 ## The traps, each paid for once
 
-1. **The Ethernet controller's events reach the IRQ vector past the
-   I flag.** A C program must take the vectors from the KERNAL as its
-   first act (`meganet_own_vectors()`), and hold the controller in
-   reset (`$D6E0 = 0`, three frames) before mega-net's INIT, or one
-   boot in three dies in the KERNAL's handler with the ROM mapped
-   under it. mega-net 5.16, 5.18; ssh 5.8, 5.19. A BASIC caller needs
-   neither. About one boot in twenty still sticks at start-up; a reset
-   and a retry is the answer, and the test driver retries.
+1. **A crash at the end of a transmit looked like interrupts.** Until
+   0.4 the driver returned while the frame was still going out, and in
+   some client layouts a third of all boots crashed there: a return
+   address read zero, the CPU ran into zero page, and its BRKs reached
+   the IRQ vector, which read as "events past the I flag". The IRQ
+   line is gated by the I flag; the driver now waits for the
+   controller's transmit-done flag (mega-net 5.19, ssh 5.36-5.37). A C
+   program still takes the vectors from the KERNAL as its first act
+   (`meganet_own_vectors()`) and holds the controller in reset
+   (`$D6E0 = 0`, three frames) before INIT: cheap, and a crash that
+   does happen then lands in a stub that records where. mega-net 5.16,
+   5.18; ssh 5.8, 5.19. A BASIC caller needs neither.
 2. **`STZ` stores the Z register.** llvm-mos compiles every store of
    zero as `STZ`. Any assembly that loads Z ends with `LDZ #0` before C
    runs again. mega-net 5.4, `spike_stz.c`. When a measurement makes no

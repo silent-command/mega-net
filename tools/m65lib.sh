@@ -65,8 +65,8 @@ wait_gone() { local t=0 max=${2:-30}; while [ $t -lt $max ]; do raw | grep -qi -
 put_d81() { port_guard || return 1; reset; sleep 2; perl -e 'alarm 60; exec @ARGV' $M65FTP -l "$MEGA65_PORT" -c "del $2" -c "exit" >/dev/null 2>&1; reset; sleep 2; perl -e 'alarm 300; exec @ARGV' $M65FTP -l "$MEGA65_PORT" -c "put $1 $2" 2>&1 | grep -q 'in [0-9]* seconds' && echo "put $2"; }
 
 # boot_prg DISK PRG PATTERN [TRIES]: reset, mount, run, and wait up to a
-# minute for PATTERN; the start-up stick (about one boot in twenty,
-# mega-net 5.18) is retried. The disk is mounted where it lives, so
+# minute for PATTERN, retrying a boot that sticks (the start-up crash
+# that mega-net 0.4 fixed, 5.19; the retry stays as a guard). The disk is mounted where it lives, so
 # there is no staging and nothing to clean up (stage_d81/unstage_d81
 # are gone with the net-tools folder, 2026-09-29).
 boot_prg() { local try t tries=${4:-4}; port_guard || return 1; for try in $(seq 1 $tries); do reset; wait_for 'READY' 8 >/dev/null; type_line "mount \"$1\""; sleep 1; type_line "run \"$2\""; if t=$(wait_for "$3" 60 2>/dev/null); then echo "booted on try $try (${t}s)"; return 0; fi; echo "try $try stuck at '$(row 23)'"; done; return 1; }
