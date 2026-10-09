@@ -1132,3 +1132,9 @@ dropped writes.
 
 5.16 and 5.18 are superseded: the "events past the I flag" were BRKs
 from these crashes.
+
+Verified with 0.5 on every family client: seven programs from the
+combined disk, five boots each, SSH and SFTP five more each in 80x50,
+and Gemini from its own disk five times; all started. The BASIC test
+program ran its 30-second poll to `DONE` three runs out of three. An
+SSH login and shell worked from the combined disk.
