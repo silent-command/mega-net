@@ -1037,3 +1037,40 @@ before returning, so the event lands inside the window the stub
 already covers. 5.16 measured only that the enable bit does not stop
 it. Not measurable in a session now that events are this rare; the
 5.16 diagnostic build over many runs would be the way.
+
+### 5.19 The transmit waits for transmit-done; 5.16's "interrupt" was a BRK (2026-10-09)
+
+The SSH client's 0.4.8 stopped at "starting the network..." on about
+a third of boots, and only in some layouts of the client's own memory
+(ssh REQUIREMENTS.md 5.36). Every stuck machine was inside this stack
+with bank 4 mapped, crashed during DHCP_START, the first call after
+INIT that transmits. Caught on the machine with a diagnostic image:
+
+- A window stub that copies the CPU stack page aside on its first
+  entry showed the first event was a **BRK**, not an interrupt. The
+  pushed flags had B set, and the CPU was executing the stack page.
+  The core's source confirms it: the IRQ line is gated by the I flag
+  (`gs4510.vhdl`, `check_for_interrupts`), so nothing reaches the IRQ
+  vector during a call except BRK. The controller's TX interrupt is
+  also gated by TXQEN (`ethernet.vhdl`), and TXQ stays set from one
+  transmit to the next. So 5.16's reading, events "past the I flag",
+  was BRKs, and TXQ was always going to read set.
+- Breadcrumbs copied to bank 5 by DMA, where a crash cannot overwrite
+  them: the driver reached the transmit command and recorded it, and
+  the crash came before DHCP_START returned. The stack page held zeros
+  where `send`'s and `mn_net_tx_send`'s return addresses had been; a
+  return popped $0000 and the CPU ran into zero page.
+- Code dumped from bank 4 on a stuck machine differed from the image in
+  bytes of `mn_api_poll`; read back right after loading, the image was
+  correct on twenty boots out of twenty. So the image loads clean and
+  the damage comes with the crash.
+- It is timing-sensitive. A diagnostic that copied the stack page by
+  DMA right after the transmit command never failed in thirty boots.
+
+So the fix is the one 5.18 carried: `eth_tx` stays until TXQ says the
+frame has gone, bounded at three frames. In the worst layout, 0.4.8's
+client unchanged except for this image, thirty boots out of thirty
+started (the same build failed four in ten before). What the controller
+does at the end of a transmit that a returning CPU collides with is not
+known; this stays clear of it at the cost of the frame's own time on
+the wire.

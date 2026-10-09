@@ -19,6 +19,7 @@
 
 #define CTRL1_TXIDLE    0x80
 #define CTRL2_RXWAITING 0x20
+#define CTRL2_TXQ       0x10    /* transmit done; cleared by the transmit command */
 #define META1_CRCERR    0x80
 
 #define MIN_FRAME 60
@@ -125,7 +126,24 @@ static uint8_t eth_tx(mn_netif *nif, const uint8_t *buf, uint16_t len)
         }
     }
 
-    MN_POKE(ETH_COMMAND, 0x01);             /* transmit */
+    MN_POKE(ETH_COMMAND, 0x01);             /* transmit; clears TXQ */
+
+    /* Stay until the controller says the frame has gone: TXQ, set by
+     * the controller when the transmit completes, cleared by the command
+     * above. Returning at once crashed a third of all boots in some
+     * client layouts, the CPU leaving the call through a return address
+     * that read zero; with this wait, none in thirty (5.19). Bounded:
+     * three frames, with a spin backstop. A 1,514-byte frame takes about
+     * 120 microseconds at 100 Mbit/s. */
+    last = MN_FRAMECOUNT; seen = 0; spins = 0; wraps = 0;
+    while (!(MN_PEEK(ETH_CTRL2) & CTRL2_TXQ)) {
+        uint8_t cur = MN_FRAMECOUNT;
+        if (cur != last) {
+            last = cur;
+            if (++seen >= 3) break;
+        }
+        if (++spins == 0 && ++wraps >= 20) break;
+    }
     mn_eth_dbg[2] = 0;
     return 1;
 }
