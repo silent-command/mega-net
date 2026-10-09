@@ -10,7 +10,7 @@
 120 e=$2021:gosub 1000
 130 if r=3 then 200
 140 if r=4 then print "no dhcp server: is the cable in?":end
-150 if ti-t<600 then 110
+150 if ti-t<10 then 110
 160 print "no answer from the router":end
 200 e=$2015:a=bf and 255:x=int(bf/256):y=0:z=0:gosub 1000
 210 print "my address is";peek(bf);".";peek(bf+1);".";peek(bf+2);".";peek(bf+3)
@@ -27,7 +27,7 @@
 430 e=$200f:gosub 1000:e=$2045:gosub 1000
 440 if r=2 then 500
 450 if r=0 then print "could not connect, reason";peek($1607):end
-460 if ti-t<750 then 430
+460 if ti-t<15 then 430
 470 print "the server did not answer":end
 500 print "connected, asking for the front page":print
 510 sb=bf+$100:poke sb,13:poke sb+1,10

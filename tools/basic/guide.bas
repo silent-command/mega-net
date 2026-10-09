@@ -9,7 +9,7 @@
 130 e=$2021:gosub 1000
 140 if r=3 then 200
 150 if r=4 then print "no dhcp server":end
-160 if ti-t<600 then 120
+160 if ti-t<10 then 120
 170 print "dhcp timed out":end
 200 print "online"
 210 e=$2015:a=bf and 255:x=int(bf/256):y=0:z=0:gosub 1000
@@ -27,7 +27,7 @@
 440 e=$200f:gosub 1000:e=$2045:gosub 1000
 450 if r=2 then 500
 460 if r=0 then print "connection failed, flags";peek($1607):end
-470 if ti-t<750 then 440
+470 if ti-t<15 then 440
 480 print "no answer":end
 500 sb=bf+$100:poke sb,13:poke sb+1,10
 520 poke bf+$10,sb and 255:poke bf+$11,int(sb/256):poke bf+$12,0:poke bf+$13,2:poke bf+$14,0
