@@ -66,7 +66,7 @@ put_d81() { port_guard || return 1; reset; sleep 2; perl -e 'alarm 60; exec @ARG
 
 # boot_prg DISK PRG PATTERN [TRIES]: reset, mount, run, and wait up to a
 # minute for PATTERN, retrying a boot that sticks (the start-up crash
-# that mega-net 0.4 fixed, 5.19; the retry stays as a guard). The disk is mounted where it lives, so
+# that mega-net 0.5 fixed, 5.20; the retry stays as a guard). The disk is mounted where it lives, so
 # there is no staging and nothing to clean up (stage_d81/unstage_d81
 # are gone with the net-tools folder, 2026-09-29).
 boot_prg() { local try t tries=${4:-4}; port_guard || return 1; for try in $(seq 1 $tries); do reset; wait_for 'READY' 8 >/dev/null; type_line "mount \"$1\""; sleep 1; type_line "run \"$2\""; if t=$(wait_for "$3" 60 2>/dev/null); then echo "booted on try $try (${t}s)"; return 0; fi; echo "try $try stuck at '$(row 23)'"; done; return 1; }

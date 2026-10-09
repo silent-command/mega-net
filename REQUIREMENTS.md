@@ -1085,3 +1085,50 @@ then stops in its 30-second polling loop. Each of three runs either
 hit a BASIC error (`?SYNTAX ERROR` or `?ILLEGAL QUANTITY ERROR` in
 lines 1000-1010) or hung. 0.3's disk does the same, so it is older
 than this fix and affects BASIC callers only.
+
+### 5.20 The real cause: INIT turned on the controller's CPU activity log (2026-10-09)
+
+5.19 was a mitigation, not the cause. Its own carried item proved it:
+the BASIC test program, run with 0.4, crashed in DHCP_START three runs
+out of three. A BASIC caller is the easy case to study, because the
+image is a `BLOAD` with no size check, so diagnostic images drop
+straight onto the disk.
+
+The cause is one line in `mn_eth45e100_init`. To clear RXQEN/TXQEN it
+read `$D6E1` and wrote back `v & $3F`. That register reads and writes
+differently (`ethernet.vhdl`): read, bits 2-1 are the number of free
+receive buffers, "11" at rest; written, bit 2 is `activity_dump`, the
+controller's CPU activity log, and bit 3 its video stream. So INIT
+switched the log on. In this core the log's frames are never sent (the
+send branch is `elsif false and ...`), but the log still fills, and
+when it is nearly full while a transmit is in progress the controller
+raises `cpu_arrest`, which holds the CPU until the transmit ends. The
+hold sets `memory_access_write := '0'` (`gs4510.vhdl`): a write in
+flight in that cycle is dropped and never redone. A JSR's return
+address goes missing, and so does a BASIC variable or text pointer.
+That is every symptom: return slots reading zero, BRK loops in zero
+page, `?SYNTAX ERROR` and `?ILLEGAL QUANTITY ERROR` in BASIC, and a
+dependence on layout and timing, because which write a hold lands on
+depends on instruction alignment. The log stays on until `eth_rx`
+first writes `$01`/`$03` to the register (bit 2 clear), that is, until
+the first received frame. That is why it was always the first transmit
+after INIT. 5.19's wait helped only because the holds then mostly fell
+in the wait loop, which writes nothing.
+
+The fix is a plain `$00` to `$D6E1` (interrupt enables, log and stream
+off, rotate bit low for `eth_rx`'s next edge). 5.19's transmit-done
+wait is removed. `$D6E5` reads and writes the same bits, so its
+read-modify-write stays. Measured with this fix and no wait: the BASIC
+test program got its lease and polled cleanly five runs out of five
+(three of three crashed before), and the SSH client in 0.4.8's layout
+started twenty boots out of twenty (four in ten failed before).
+
+The BASIC test program had its own bug: BASIC 65's `TI` counts
+seconds, not sixtieths, so its "30-second" poll ran 30 minutes and its
+DHCP timeout 15. The same mistake was in `GUIDE`, `TUTORIAL` and both
+guides' text; all now count seconds. That also closes 5.19's carried
+item: the "hangs" were the long loop, and the BASIC errors were the
+dropped writes.
+
+5.16 and 5.18 are superseded: the "events past the I flag" were BRKs
+from these crashes.

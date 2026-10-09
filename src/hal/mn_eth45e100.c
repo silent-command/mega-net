@@ -19,7 +19,6 @@
 
 #define CTRL1_TXIDLE    0x80
 #define CTRL2_RXWAITING 0x20
-#define CTRL2_TXQ       0x10    /* transmit done; cleared by the transmit command */
 #define META1_CRCERR    0x80
 
 #define MIN_FRAME 60
@@ -126,24 +125,7 @@ static uint8_t eth_tx(mn_netif *nif, const uint8_t *buf, uint16_t len)
         }
     }
 
-    MN_POKE(ETH_COMMAND, 0x01);             /* transmit; clears TXQ */
-
-    /* Stay until the controller says the frame has gone: TXQ, set by
-     * the controller when the transmit completes, cleared by the command
-     * above. Returning at once crashed a third of all boots in some
-     * client layouts, the CPU leaving the call through a return address
-     * that read zero; with this wait, none in thirty (5.19). Bounded:
-     * three frames, with a spin backstop. A 1,514-byte frame takes about
-     * 120 microseconds at 100 Mbit/s. */
-    last = MN_FRAMECOUNT; seen = 0; spins = 0; wraps = 0;
-    while (!(MN_PEEK(ETH_CTRL2) & CTRL2_TXQ)) {
-        uint8_t cur = MN_FRAMECOUNT;
-        if (cur != last) {
-            last = cur;
-            if (++seen >= 3) break;
-        }
-        if (++spins == 0 && ++wraps >= 20) break;
-    }
+    MN_POKE(ETH_COMMAND, 0x01);             /* transmit */
     mn_eth_dbg[2] = 0;
     return 1;
 }
@@ -174,11 +156,18 @@ void mn_eth45e100_init(mn_netif *nif)
     /* The PHY needs about four seconds to come back. */
     mn_m65_wait_frames(200);
 
-    /* RXQEN/TXQEN (CTRL2 bits 7,6) enable controller interrupts nothing
-     * here services. Clear them read-modify-write, never with a blind
-     * store: the low bits are the RX queue advance controls. */
-    v = MN_PEEK(ETH_CTRL2);
-    MN_POKE(ETH_CTRL2, v & 0x3f);
+    /* CTRL2 again, as a plain store of zero, NEVER read-modify-write:
+     * the register reads and writes differently. Read, bits 2-1 are the
+     * count of free receive buffers ("11" at rest); written, bit 2 turns
+     * on the controller's CPU activity log, and bit 3 its video stream.
+     * Writing back what was read turned the log on, and while it is on
+     * the controller pauses the CPU every 128 instructions during a
+     * transmit, dropping whatever memory write was in flight. Return
+     * addresses went missing and a third of some clients' boots crashed
+     * in the first transmit (5.20). Zero leaves RXQEN/TXQEN (bits 7,6)
+     * clear, the log and stream off, and the rotate bit (1) low for
+     * eth_rx's next 0->1 edge. */
+    MN_POKE(ETH_CTRL2, 0x00);
 
     nif->rx = eth_rx;
     nif->tx = eth_tx;
