@@ -1138,3 +1138,19 @@ combined disk, five boots each, SSH and SFTP five more each in 80x50,
 and Gemini from its own disk five times; all started. The BASIC test
 program ran its 30-second poll to `DONE` three runs out of three. An
 SSH login and shell worked from the combined disk.
+
+### 5.21 A switched-off IEC drive hangs every exit to BASIC (2026-10-24)
+
+Reported: none of the clients came back to BASIC; the drive light
+blinked green and no READY appeared. The same happened with no client
+at all: from BASIC, with a disk mounted, a jump through the reset
+vector hung the same way, and without a mounted disk it reached READY.
+The CPU was in the ROM's serial-bus routines, waiting at `$C9EA` for
+DATA to go high, and `$DD00` read `$07`: DATA and CLK both low while the
+MEGA65 drove neither. A 1581 newly attached to the IEC port was switched
+off, and an unpowered drive loads the bus. Switched on and set to device
+10, the lines read `$C7`, and all eight clients returned to READY after
+one RUN/STOP, the last line READY and the CPU in the KERNAL's idle loop.
+A full reset had not shown it only because the card has no MEGA65.D81,
+the firmware's start-up disk (`CANNOT MOUNT D81 - (ERRNO: 88)`, file
+not found), so nothing was mounted at reset. PLATFORM.md, trap 17.

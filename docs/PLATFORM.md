@@ -167,6 +167,17 @@ job or a bank must see.
     background is global and belongs to the user (`$D021`, inherited or
     cycled); a host's background is drawn reversed where it differs
     (ssh 5.31).
+17. **A drive on the IEC port that is switched off stops every exit.**
+    An unpowered drive still plugged into the serial (IEC) port holds
+    the bus's DATA and CLK lines low (`$DD00` reads `$07`, not `$C7`).
+    The ROM's reset uses the bus whenever a disk image is mounted, and
+    waits forever for the lines to be released: the banner appears, the
+    drive light blinks, READY never comes. Every family client leaves
+    through that reset with its disk still mounted, so all of them hang
+    on exit; a full reset hangs too once the start-up disk mounts. Not
+    a software fault: switch the drive on or unplug it. A drive that is
+    on should not be device 8, the internal drive's number; 9 to 11 are
+    free (mega-net 5.21).
 
 ## The toolchain
 
