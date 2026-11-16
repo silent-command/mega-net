@@ -21,7 +21,7 @@ stack's single-socket design cannot provide.
 | Question | Decision |
 |---|---|
 | **Why replace, not patch** | Three reasons, all from the gopher project. (1) the earlier stack's 100 ms delay spins on a VIC-II raster register that never advances in native MEGA65 mode, so `ETH_INIT` never returns without a local patch. (2) It is single-socket; multi-socket means multiplexing connection state through every layer — a rewrite, not an increment. (3) It has no upstream license file. Patching addresses (1) only. |
-| **License** | **0BSD.** Deliberate: partly so the stack is unambiguously reusable, partly because the earlier stack's licensing ambiguity is a background reason this project exists. |
+| **License** | **Apache License 2.0.** Deliberate: partly so the stack is unambiguously reusable, partly because the earlier stack's licensing ambiguity is a background reason this project exists. |
 | **Run mode** | **Native MEGA65 mode only.** No C64/GO64 mode. Decided 2026-09-04. |
 | **Development hosts** | **Windows, Linux and macOS are all first-class.** A hard requirement, not a preference — decided 2026-09-04. The build is Python (`build.py`), never shell-only; the compiler and the MEGA65 tool are discovered, never assumed; no absolute paths in anything committed. See `LLM.md` for the checklist. |
 | **Architecture: host-testable core** | The stack is portable C99 with the hardware behind one thin interface, `mn_netif`. It compiles natively on the host and is exercised by tests that inject synthetic frames. This was the highest-leverage lesson from gopher: a 60-second edit-deploy-observe loop with unreliable feedback is what made the last project painful, and a state machine you can run in milliseconds changes the character of the work. Done in `4c9a5e6`. |
@@ -88,7 +88,7 @@ Numbered so they can be referred to from commits and findings.
 ### Process
 
 - **R-17** Windows, Linux and macOS are all supported development hosts.
-- **R-18** 0BSD license, present from the first commit.
+- **R-18** Apache License 2.0, present from the first commit.
 - **R-19** Intermittent faults are made deterministic before they are
   debugged — the working habit from gopher, kept on purpose.
 - **R-20** The stack leaves shared hardware state as it found it. Registers

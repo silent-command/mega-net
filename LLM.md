@@ -3,7 +3,7 @@
 A native TCP/IP stack for the MEGA65: Ethernet, ARP, IPv4, ICMP, UDP,
 DHCP with lease renewal, DNS, NTP, and TCP with eight sockets, in C99
 with a small assembly core, callable from C, assembly and BASIC 65
-through one jump table. 0BSD.
+through one jump table. Apache License 2.0.
 
 **Status: complete for its first applications and in use.** Three
 clients run on it, `../mega-gopher`, `../mega-ftp` and `../mega-ssh`. ABI 0.2,

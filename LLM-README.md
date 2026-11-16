@@ -42,7 +42,7 @@ today: a gopher browser, an FTP client and an SSH client.
   development hosts: the build is Python, the core has no platform
   headers, and the compiler and MEGA65 tools are found rather than
   assumed.
-- **0BSD licensed.**
+- **Apache License 2.0.**
 
 **Status: complete for its first applications and in use.** ABI 0.2,
 35 entries. The image is 32 KB in a 40 KB window. No known defects.
@@ -245,4 +245,4 @@ compiler cannot be relied on to lay out packed structs identically.
 
 ## License
 
-0BSD. See `LICENSE`.
+Apache License 2.0. See `LICENSE`.
