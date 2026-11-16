@@ -13,6 +13,7 @@ void test_dhcp(void);
 void test_dns(void);
 void test_ntp(void);
 void test_tcp(void);
+void test_tcp_robust(void);
 
 int main(void)
 {
@@ -31,6 +32,7 @@ int main(void)
     test_dns();
     test_ntp();
     test_tcp();
+    test_tcp_robust();
 
     printf("\n%d checks, %d failed\n", mn_tests_run, mn_tests_failed);
 

@@ -29,6 +29,7 @@
 #define MN_TCP_F_RESET   0x02   /* the peer reset the connection */
 #define MN_TCP_F_TIMEOUT 0x04   /* retransmissions exhausted */
 #define MN_TCP_F_REFUSED 0x08   /* SYN answered with RST */
+#define MN_TCP_F_NOROUTE 0x10   /* the next hop never answered ARP (set with TIMEOUT) */
 
 #define MN_TCP_RCVBUF 4096
 #define MN_TCP_SNDBUF 3072

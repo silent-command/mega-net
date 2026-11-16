@@ -63,6 +63,7 @@ static void transmit(mn_dns *d, mn_net *net, uint16_t now)
         d->state = MN_DNS_FAILED;
         return;
     }
+    mn_net_tick(net, now);              /* the ARP timers' clock */
     r = mn_net_send_udp(net, d->server, d->port, PORT_DNS, msg, n);
     d->pending = (uint8_t)(r == MN_SEND_PENDING);
     d->sent_at = now;

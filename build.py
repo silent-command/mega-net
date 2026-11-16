@@ -256,6 +256,7 @@ def build_abi():
     image = out / "meganet.bin"
     mapfile = out / "meganet.map"
     srcs = ([str(abi / "jumptable.S"), str(abi / "api.c")] + sources("src/hal")
+            + sorted(str(p) for p in (ROOT / "src/hal").glob("*.S"))   # the checksum (mn_checksum.c)
             + sources("src/net"))
     print("stack image:")
     # -Oz, not -Os: 3.5 KB of the 40 KB window, at no cost the 16 KB echo

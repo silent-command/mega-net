@@ -511,3 +511,136 @@ void test_tcp(void)
     tick(1);
     mn_expect_eq_u16(t.inflight, 2000, "window reopened: the rest goes, 1400 + 600");
 }
+
+/* --- what a dead next hop, a shut window and a peer's probes do --- */
+
+/* Frames of the given ethertype sent since index from. */
+static uint8_t sent_of_type(uint8_t from, uint16_t type)
+{
+    uint8_t i, n = 0;
+    uint16_t len;
+    for (i = from; i < s.tx_count; i++) {
+        const uint8_t *f = stub_link_sent(&s, i, &len);
+        if (f && mn_ether_type(f) == type) n++;
+    }
+    return n;
+}
+
+void test_tcp_robust(void)
+{
+    static const uint8_t dead_ip[4] = { 192, 168, 0, 71 };   /* on the subnet, never answers */
+    static const uint8_t late_ip[4] = { 192, 168, 0, 72 };
+    static const uint8_t late_mac[6] = { 0x02, 0x00, 0x5e, 0x01, 0x02, 0x03 };
+    static const uint8_t data[10] = { 48, 49, 50, 51, 52, 53, 54, 55, 56, 57 };
+    uint8_t frame[MN_ARP_FRAME_LEN], arp[MN_ARP_FRAME_LEN];
+    seg_t g;
+    uint16_t i, before, at;
+    uint8_t r;
+
+    mn_suite("tcp: dead next hop, shut window, probes");
+
+    /* A connection to a host that never answers ARP ends, and says why. */
+    fresh();
+    mn_expect(mn_tcp_connect(&t, &net, dead_ip, peer_port, now), "connect to a dead host starts", "");
+    mn_expect_eq_u16(sent_of_type(0, MN_ETHERTYPE_ARP), 1, "one ARP request at once");
+    for (i = 0; i < 24; i++) tick(1);
+    mn_expect_eq_u16(sent_of_type(0, MN_ETHERTYPE_ARP), 1, "none more within half a second (it was one per poll)");
+    for (i = 0; i < 200 && t.state != MN_TCP_CLOSED; i++) tick(1);
+    mn_expect_eq_u16(t.state, MN_TCP_CLOSED, "CLOSED within five seconds");
+    mn_expect_eq_u16(t.flags, MN_TCP_F_TIMEOUT | MN_TCP_F_NOROUTE, "TIMEOUT and NOROUTE");
+    mn_expect_eq_u16(sent_of_type(0, MN_ETHERTYPE_ARP), MN_ARP_TRIES, "five requests in all");
+    mn_expect_eq_u16(sent_of_type(0, MN_ETHERTYPE_IPV4), 0, "and no SYN");
+
+    /* The same for UDP (DNS, NTP and DHCP renewal use it): NOROUTE, not PENDING for ever. */
+    fresh();
+    net.now = now;
+    for (i = 0, r = MN_SEND_PENDING; i < 400 && r == MN_SEND_PENDING; i++) {
+        r = mn_net_send_udp(&net, dead_ip, 5000, 53, data, sizeof data);
+        net.now++;
+    }
+    mn_expect_eq_u16(r, MN_SEND_NOROUTE, "UDP to a dead host: NOROUTE");
+    mn_expect(i > 4 * MN_ARP_RETRY && i <= MN_ARP_TRIES * MN_ARP_RETRY + 1, "after the five tries, not before", "");
+    mn_expect_eq_u16(mn_net_send_udp(&net, dead_ip, 5000, 53, data, sizeof data), MN_SEND_NOROUTE,
+                     "remembered for the next caller");
+    net.now = (uint16_t)(net.now + MN_ARP_HOLD);
+    before = s.tx_count;
+    mn_expect_eq_u16(mn_net_send_udp(&net, dead_ip, 5000, 53, data, sizeof data), MN_SEND_PENDING,
+                     "then forgotten: asked afresh");
+    mn_expect_eq_u16(sent_of_type((uint8_t)before, MN_ETHERTYPE_ARP), 1, "with a new request");
+
+    /* An answer on the second request: the SYN goes at once. */
+    fresh();
+    mn_tcp_connect(&t, &net, late_ip, peer_port, now);
+    for (i = 0; i < MN_ARP_RETRY; i++) tick(1);
+    mn_expect_eq_u16(sent_of_type(0, MN_ETHERTYPE_ARP), 2, "a second request after half a second");
+    mn_arp_build_request(arp, late_mac, late_ip, our_ip);          /* a frame with late_ip's sender fields */
+    for (i = 0; i < MN_ARP_FRAME_LEN; i++) frame[i] = arp[i];
+    frame[21] = MN_ARP_OP_REPLY;
+    for (i = 0; i < 6; i++) frame[i] = our_mac[i];
+    stub_link_inject(&s, frame, MN_ARP_FRAME_LEN);
+    mn_net_poll(&net);
+    before = s.tx_count;
+    tick(1);
+    mn_expect(sent_seg(0, &g) && g.flags == SYN && s.tx_count == before + 1, "the reply: SYN on the next poll", "");
+    mn_expect_eq_u16(t.state, MN_TCP_SYN_SENT, "still connecting, not failed");
+
+    /* A peer that shuts its window: probed, never given up on, and reopened. */
+    fresh();
+    mn_expect(handshake(), "handshake", "");
+    peer_send(ACK, peer_seq, t.snd_nxt, 0, 0, 0);                 /* window 0 */
+    mn_expect_eq_u16(mn_tcp_send(&t, data, sizeof data), sizeof data, "data queued against a shut window");
+    s.tx_count = 0;
+    tick(1);
+    mn_expect_eq_u16(s.tx_count, 0, "nothing sent at once");
+    at = now;
+    while (s.tx_count == 0 && (uint16_t)(now - at) < 200) tick(1);
+    mn_expect(sent_seg(0, &g) && g.flags == ACK && g.dlen == 0 && g.seq == t.snd_nxt - 1,
+              "a probe: no data, the last sequence number acknowledged", "");
+    mn_expect((uint16_t)(now - at) <= 51, "after one RTO", "");
+    at = now;
+    while (s.tx_count == 1 && (uint16_t)(now - at) < 400) tick(1);
+    mn_expect((uint16_t)(now - at) >= 99 && (uint16_t)(now - at) <= 101, "the next one after twice that", "");
+    for (i = 0; i < 3000; i++) tick(1);                           /* a minute */
+    mn_expect_eq_u16(t.state, MN_TCP_ESTABLISHED, "still connected a minute later");
+    mn_expect_eq_u16(t.inflight, 0, "with nothing in flight");
+    s.tx_count = 0;
+    peer_send(ACK, peer_seq, t.snd_nxt, 8192, 0, 0);              /* the probe's answer: open */
+    tick(1);
+    mn_expect(sent_seg(0, &g) && g.dlen == sizeof data, "window open: the data goes", "");
+
+    /* Data that arrives while the peer's window is shut is still acknowledged. */
+    fresh();
+    handshake();
+    peer_send(ACK, peer_seq, t.snd_nxt, 0, 0, 0);
+    mn_tcp_send(&t, data, sizeof data);
+    tick(1);
+    s.tx_count = 0;
+    peer_send(ACK | PSH, peer_seq, t.snd_nxt, 0, data, sizeof data); peer_seq += sizeof data;
+    tick(1);
+    mn_expect(sent_seg(0, &g) && g.flags == ACK && g.ack == peer_seq, "its ACK goes at once", "");
+
+    /* So is data that arrives while our in-flight data fills the window. */
+    fresh();
+    handshake();
+    peer_send(ACK, peer_seq, t.snd_nxt, 10, 0, 0);                /* room for 10 bytes */
+    mn_tcp_send(&t, data, sizeof data); tick(1);
+    mn_tcp_send(&t, data, sizeof data);                           /* 10 more: no room */
+    tick(1);
+    s.tx_count = 0;
+    peer_send(ACK | PSH, peer_seq, t.snd_una, 10, data, 4); peer_seq += 4;
+    tick(1);
+    mn_expect(sent_seg(0, &g) && g.ack == peer_seq && g.dlen == 0, "ACKed with the window full", "");
+
+    /* A peer's own probe, or a keepalive: an old sequence number, no data. */
+    fresh();
+    handshake();
+    s.tx_count = 0;
+    peer_send(ACK, peer_seq - 1, t.snd_nxt, 8192, 0, 0);
+    tick(1);
+    mn_expect(sent_seg(0, &g) && g.flags == ACK && g.ack == peer_seq && g.win == MN_TCP_WINDOW_CAP,
+              "answered with our ACK and window", "");
+    s.tx_count = 0;
+    peer_send(ACK, peer_seq, t.snd_nxt, 8192, 0, 0);              /* an ordinary bare ACK */
+    tick(1);
+    mn_expect_eq_u16(s.tx_count, 0, "an ordinary bare ACK is not answered");
+}

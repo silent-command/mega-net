@@ -16,6 +16,18 @@
 #define MN_SEND_FAILED   0
 #define MN_SEND_OK       1
 #define MN_SEND_PENDING  2        /* ARP sent for the next hop; try again */
+#define MN_SEND_NOROUTE  3        /* the next hop never answered ARP */
+
+/* Resolving a next hop: one lookup at a time, a request every
+ * MN_ARP_RETRY ticks, given up after MN_ARP_TRIES (RFC 1122 2.3.2.1),
+ * and the failure remembered for MN_ARP_HOLD ticks so that whoever is
+ * waiting on that hop hears of it. */
+#define MN_ARP_RETRY 25           /* 0.5 s at 50 Hz */
+#define MN_ARP_TRIES 5
+#define MN_ARP_HOLD  50
+#define MN_ARP_IDLE   0
+#define MN_ARP_ASKING 1
+#define MN_ARP_FAILED 2
 
 typedef struct {
     uint16_t port;                /* 0 = closed */
@@ -48,9 +60,18 @@ typedef struct mn_net {
     /* Whoever wants IPv4 packets of another protocol (TCP). */
     mn_ip_input_fn tcp_input;
     void *tcp_ctx;
+    /* The lookup in progress (MN_ARP_*), and the tick it is timed by. */
+    uint8_t  arp_ip[4];
+    uint8_t  arp_state, arp_tries;
+    uint16_t arp_at;
+    uint16_t now;
 } mn_net;
 
 void mn_net_init(mn_net *net, mn_netif *nif);
+
+/* The tick the ARP timers run on. Every poller that has one passes it
+ * in (TCP, DHCP, DNS, NTP), so this layer needs no clock of its own. */
+#define mn_net_tick(net, t) ((net)->now = (t))
 
 /* Where the UDP mailboxes live: MN_UDP_SOCKETS * MN_UDP_SOCK_BUF bytes of
  * pool from base, which must not cross a 64 KB boundary. mn_net_init sets
@@ -73,13 +94,15 @@ uint8_t mn_net_poll(mn_net *net);
 const uint8_t *mn_net_next_hop(const mn_net *net, const uint8_t *dst);
 
 /* Sends payload as UDP. MN_SEND_PENDING means the next hop's MAC is not
- * yet known: an ARP request went out, nothing was sent, call again. */
+ * yet known: nothing was sent, call again (a request goes out at most
+ * every MN_ARP_RETRY ticks). MN_SEND_NOROUTE means the next hop did
+ * not answer MN_ARP_TRIES requests. */
 uint8_t mn_net_send_udp(mn_net *net, const uint8_t *dst_ip, uint16_t sport,
                         uint16_t dport, const uint8_t *payload, uint16_t len);
 
 /* Raw IPv4 transmit in two steps, so a transport can build its segment
  * in place. mn_net_tx_begin resolves the next hop and returns where the
- * IPv4 payload goes (NULL with *why = MN_SEND_PENDING or MN_SEND_FAILED);
+ * IPv4 payload goes (NULL with *why = MN_SEND_PENDING or MN_SEND_NOROUTE);
  * mn_net_tx_send fills the headers and transmits. */
 uint8_t *mn_net_tx_begin(mn_net *net, const uint8_t *dst_ip, uint8_t *why);
 uint8_t  mn_net_tx_send(mn_net *net, const uint8_t *dst_ip, uint8_t proto,

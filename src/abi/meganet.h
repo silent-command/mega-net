@@ -67,6 +67,7 @@
 #define MEGANET_TCP_F_RESET 0x02
 #define MEGANET_TCP_F_TIMEOUT 0x04
 #define MEGANET_TCP_F_REFUSED 0x08
+#define MEGANET_TCP_F_NOROUTE 0x10   /* with TIMEOUT: the next hop never answered ARP */
 
 #define MEGANET_DNS_IDLE 0
 #define MEGANET_DNS_WAITING 1

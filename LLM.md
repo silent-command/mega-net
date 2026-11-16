@@ -7,8 +7,8 @@ through one jump table. Apache License 2.0.
 
 **Status: complete for its first applications and in use.** Three
 clients run on it, `../mega-gopher`, `../mega-ftp` and `../mega-ssh`. ABI 0.2,
-35 entries, appended only. The host suite is 367 checks. The image is
-32 KB in a 40 KB window. No known defects.
+35 entries, appended only. The host suite is 395 checks. The image is
+33 KB in a 40 KB window. No known defects.
 
 ## Read first
 
@@ -22,7 +22,7 @@ clients run on it, `../mega-gopher`, `../mega-ftp` and `../mega-ssh`. ABI 0.2,
 ## Commands
 
 ```
-python3 build.py test     host suite; must be 367 checks, 0 failed before anything else
+python3 build.py test     host suite; must be 395 checks, 0 failed before anything else
 python3 build.py abi      the image (build/m65/meganet.bin), the trampoline as C (build/gen/), the spikes
 python3 build.py m65      the portable core alone, for the target
 python3 tools/basic_d81.py            a disk for BASIC callers: TRAMP, MEGANET, the guide's and the tutorial's programs

@@ -1154,3 +1154,42 @@ one RUN/STOP, the last line READY and the CPU in the KERNAL's idle loop.
 A full reset had not shown it only because the card has no MEGA65.D81,
 the firmware's start-up disk (`CANNOT MOUNT D81 - (ERRNO: 88)`, file
 not found), so nothing was mounted at reset. PLATFORM.md, trap 17.
+
+### 5.22 ARP given up on, the zero window probed, and the checksum in assembly (2026-11-16)
+
+Three faults found by reading the code beside Mos65's MOSNET, all with
+host checks now (28, in `test_tcp.c`'s `test_tcp_robust`; 15 of them
+fail on the old code):
+
+- **A next hop that never answers ARP.** Every poll broadcast another
+  request and nobody counted: a dead gateway drew one ARP a poll per
+  socket, and a connection to it stayed in SYN_SENT for ever; DNS, NTP
+  and a DHCP renewal waited the same way. `mn_net.c`'s `resolve` now
+  keeps one lookup, asks every 0.5 s (`MN_ARP_RETRY`), gives up after
+  five, and remembers the failure for a second. A send answers
+  `MN_SEND_NOROUTE`; TCP closes with TIMEOUT and the new flag NOROUTE
+  (`$10`, ABI.md), the UDP users count it as a try, and `UDP_SEND`
+  still returns the ABI's 0 for it.
+- **A shut window.** With the peer's window at zero and nothing in
+  flight, no timer ran: a lost window update stalled both sides for
+  ever. The sender now probes with the last acknowledged sequence
+  number, backing off to `RTO_MAX`, for as long as the window stays
+  shut (RFC 1122 4.2.2.17). Data that arrived while the window was
+  shut or full was not acknowledged until it opened (`poll_one`
+  returned before the ACK); it is now. And a bare segment with an old
+  sequence number, a peer's probe or a keepalive, is answered (RFC 793).
+- **The checksum.** `sum16` compiled to about 40 instructions a word;
+  `src/hal/mn_checksum_m65.S` does 13, the carry kept in C across the
+  loop. Checked against the C on Xemu for every length 0-1518, both
+  alignments: 3,038 sums, none different; 0.8 ms a 1,460-byte segment
+  against 1.8. `% MN_TCP_SNDBUF` (3072) became a subtraction.
+
+The image is 33,398 bytes. On the machine (the adapter is
+`/dev/cu.usbserial-21301` now, the Mac 192.168.1.251), from the
+Net-Tools menu: NTP by DHCP, DNS and pool.ntp.org, the clock right to
+the second; the gopher fixture's 25.6 KB in 1.6 s; FTP's 200 KB random
+file down and back up byte-identical. The same FTP run from the card's
+previous Net-Tools disk: down 1.092 s, up 2.107 s; with this image
+0.976 s and 1.775 s (pyftpdlib's figures, one run each). The no-route
+and zero-window paths have not been seen on the machine; the host
+checks are the evidence.

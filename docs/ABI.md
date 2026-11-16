@@ -99,7 +99,7 @@ index in Z; a caller that never sets Z has socket 0.
 | 1 | SYN_SENT | `$02` | RESET: the peer reset the connection |
 | 2 | ESTABLISHED | `$04` | TIMEOUT: retransmissions exhausted |
 | 3 | FIN_WAIT_1 | `$08` | REFUSED: the SYN was answered with RST |
-| 4 | FIN_WAIT_2 | | |
+| 4 | FIN_WAIT_2 | `$10` | NOROUTE: the next hop never answered ARP (five requests, half a second apart); always with TIMEOUT, so a client that knows only TIMEOUT reports a timeout |
 | 5 | CLOSE_WAIT | | |
 | 6 | CLOSING | | |
 | 7 | LAST_ACK | | |

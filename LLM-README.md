@@ -31,7 +31,7 @@ today: a gopher browser, an FTP client and an SSH client.
   call and returns. Every wait in your program stays yours to bound.
 - **Proven twice over.** The core is portable C99 with the hardware
   behind one interface, so the protocols are tested on the development
-  machine in milliseconds: 367 checks, including adversarial sequence
+  machine in milliseconds: 395 checks, including adversarial sequence
   numbers, retransmission and half-closes that are impractical to stage
   on hardware. Then the hardware findings, numbered in
   `REQUIREMENTS.md`: fifty pings at a fifty-millisecond interval, a
@@ -45,7 +45,7 @@ today: a gopher browser, an FTP client and an SSH client.
 - **Apache License 2.0.**
 
 **Status: complete for its first applications and in use.** ABI 0.2,
-35 entries. The image is 32 KB in a 40 KB window. No known defects.
+35 entries. The image is 33 KB in a 40 KB window. No known defects.
 
 ## Using it from BASIC 65
 

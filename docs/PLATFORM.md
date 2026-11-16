@@ -195,8 +195,10 @@ path.
 machine over the serial monitor; `mega65_ftp` moves files to the SD
 card; `mega-net/tools/mon.py` is a monitor client with memory reads,
 breakpoints and watchpoints; `mega-net/tools/device.py` finds the tool
-on any host. `MEGA65_PORT=/dev/cu.usbserial-23201` pins the port when
-autodiscovery picks the wrong FTDI channel.
+on any host. `MEGA65_PORT=/dev/cu.usbserial-21301` pins the port when
+autodiscovery picks the wrong FTDI channel. The name follows the USB
+socket (it was `-23201` until 2026-11-16): `ls /dev/cu.usbserial*`
+shows two channels, and the monitor is the one ending in 1.
 
 - **Typing.** `m65 -T text` types a line and RETURN; `-t` types without,
   with escapes `~M` RETURN, `~D ~U ~L ~R` cursor, `~H` HOME, `~T`
@@ -234,7 +236,9 @@ autodiscovery picks the wrong FTDI channel.
   of the end. Halting the CPU (breakpoints, `-S`, even an extra DMA)
   hides timing faults; read state after the fact instead.
 - **Servers.** Public gopher servers rate-limit repeated hits; use the
-  fixture servers under each client's `tools/`. An asyncssh server
+  fixture servers under each client's `tools/`. The Mac's address comes
+  from DHCP (192.168.1.251 on 2026-11-16, .232 before):
+  `ipconfig getifaddr en0` before typing it into a client. An asyncssh server
   needs `line_editor=False` or every full-screen program looks broken
   (ssh 5.21).
 

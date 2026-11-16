@@ -394,6 +394,7 @@ void mn_api_udp_send(void)
 {
     uint16_t len, dport;
     uint32_t src;
+    uint8_t r;
     if (mn_api_z >= MN_UDP_SOCKETS || net.sock[mn_api_z].port == 0) { ret(0xFF, 0, 0, 0); return; }
     mn_dma_copy(arg_ptr(), MN_PHYS(blk), 11);
     dport = (uint16_t)(blk[4] | ((uint16_t)blk[5] << 8));
@@ -401,7 +402,8 @@ void mn_api_udp_send(void)
     len = (uint16_t)(blk[9] | ((uint16_t)blk[10] << 8));
     if (len > MN_UDP_MAX_PAYLOAD) { ret(0, 0, 0, 0); return; }
     mn_dma_copy(src, MN_PHYS(frame), len);
-    ret(mn_net_send_udp(&net, blk, net.sock[mn_api_z].port, dport, frame, len), 0, 0, 0);
+    r = mn_net_send_udp(&net, blk, net.sock[mn_api_z].port, dport, frame, len);
+    ret(r == MN_SEND_NOROUTE ? MN_SEND_FAILED : r, 0, 0, 0);    /* the ABI's 0, 1, 2: no route is a failure */
 }
 
 /* Block: ptr28[3], cap u16, then out: len u16, src ip[4], src port u16.

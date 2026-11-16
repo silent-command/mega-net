@@ -6,7 +6,7 @@
 #   source ../mega-net/tools/m65lib.sh
 #   put_d81 bin/FTPC.D81 FTPC.D81          replace a disk at the card root (resets first)
 #   boot_prg ftpc.d81 ftpc 'ost:'          mount, run, wait for the first screen
-#   type_line '192.168.1.232'              a line and RETURN
+#   type_line '192.168.1.251'              a line and RETURN
 #   type_keys 'q~M'                        keys, with the m65 escapes
 #   wait_for 'entr' 20                     seconds until the word appears, or a message
 #   row 23                                 one screen row as text
@@ -15,7 +15,7 @@
 # MEGA65_PORT pins the serial port; the m65 tool is found by name, .osx
 # or not.
 
-export MEGA65_PORT="${MEGA65_PORT:-/dev/cu.usbserial-23201}"
+export MEGA65_PORT="${MEGA65_PORT:-/dev/cu.usbserial-21301}"
 
 # port_guard: before touching the machine. M65Connect's driver is the
 # user's and is never touched: if it holds the port, say so and stop.

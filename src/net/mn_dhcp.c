@@ -94,6 +94,7 @@ static void transmit(mn_dhcp *d, mn_net *net, uint8_t type, uint16_t now)
      * is broadcast. */
     const uint8_t *dst = (d->state == MN_DHCP_BOUND && d->phase == MN_DHCP_PHASE_RENEWING)
                          ? d->server_id : bcast;
+    mn_net_tick(net, now);              /* the ARP timers' clock */
     uint8_t r = mn_net_send_udp(net, dst, PORT_CLIENT, PORT_SERVER, msg, n);
     d->pending = (uint8_t)(r == MN_SEND_PENDING);
     d->sent_at = now;

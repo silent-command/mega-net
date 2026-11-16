@@ -14,6 +14,7 @@ static void transmit(mn_ntp *n, mn_net *net, uint16_t now)
     for (i = 0; i < MSG_LEN; i++)
         msg[i] = 0;
     msg[0] = 0x23;                     /* LI 0, version 4, mode 3 (client) */
+    mn_net_tick(net, now);              /* the ARP timers' clock */
     r = mn_net_send_udp(net, n->server, n->port, PORT_NTP, msg, MSG_LEN);
     n->pending = (uint8_t)(r == MN_SEND_PENDING);
     n->sent_at = now;

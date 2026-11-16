@@ -43,6 +43,18 @@ void mn_net_init(mn_net *net, mn_netif *nif)
     net->tx_failures = 0;
     net->tcp_input = 0;
     net->tcp_ctx = 0;
+    net->arp_state = MN_ARP_IDLE;
+    net->arp_tries = 0;
+    net->arp_at = net->now = 0;
+}
+
+/* An address and its MAC, from a reply or a request: into the cache,
+ * and the end of any lookup for it. */
+static void learn(mn_net *net, const uint8_t *frame)
+{
+    mn_arp_cache_learn(&net->arp, mn_arp_sender_ip(frame), mn_arp_sender_mac(frame));
+    if (eq4(mn_arp_sender_ip(frame), net->arp_ip))
+        net->arp_state = MN_ARP_IDLE;
 }
 
 void mn_net_set_ip(mn_net *net, const uint8_t *ip, const uint8_t *mask,
@@ -120,13 +132,11 @@ uint8_t mn_net_poll(mn_net *net)
     case MN_ETHERTYPE_ARP:
         n = mn_arp_opcode(rxf, len);
         if (n == MN_ARP_OP_REPLY) {
-            mn_arp_cache_learn(&net->arp, mn_arp_sender_ip(rxf),
-                               mn_arp_sender_mac(rxf));
+            learn(net, rxf);
             net->arp_learned++;
         } else if (mn_arp_wants_us(rxf, len, net->ip)) {
             /* Whoever asks for us is worth remembering too. */
-            mn_arp_cache_learn(&net->arp, mn_arp_sender_ip(rxf),
-                               mn_arp_sender_mac(rxf));
+            learn(net, rxf);
             n = mn_arp_build_reply(txf, rxf, net->nif->mac, net->ip);
             send(net, n);
             net->arp_replies++;
@@ -188,6 +198,41 @@ const uint8_t *mn_net_next_hop(const mn_net *net, const uint8_t *dst)
 
 static const uint8_t *tx_mac;      /* resolved by tx_begin for tx_send */
 
+/* A next hop not in the cache: PENDING while the lookup runs, NOROUTE
+ * once it has failed. Callers retry on every poll, so the request rate
+ * is set here, not by them: without it a dead gateway drew one
+ * broadcast per poll per socket, and nobody ever gave up. One lookup
+ * runs at a time; another hop waits for it, unless it has been left
+ * unasked for two retry periods. */
+static uint8_t resolve(mn_net *net, const uint8_t *hop)
+{
+    uint16_t since = (uint16_t)(net->now - net->arp_at);
+
+    if (net->arp_state != MN_ARP_IDLE && eq4(hop, net->arp_ip)) {
+        if (net->arp_state == MN_ARP_FAILED) {
+            if (since < MN_ARP_HOLD)
+                return MN_SEND_NOROUTE;
+            net->arp_tries = 0;                   /* forgotten: ask afresh */
+        } else if (since < MN_ARP_RETRY) {
+            return MN_SEND_PENDING;
+        } else if (net->arp_tries >= MN_ARP_TRIES) {
+            net->arp_state = MN_ARP_FAILED;
+            net->arp_at = net->now;
+            return MN_SEND_NOROUTE;
+        }
+    } else if (net->arp_state == MN_ARP_ASKING && since < 2 * MN_ARP_RETRY) {
+        return MN_SEND_PENDING;
+    } else {
+        copy4(net->arp_ip, hop);
+        net->arp_tries = 0;
+    }
+    net->arp_state = MN_ARP_ASKING;
+    net->arp_at = net->now;
+    net->arp_tries++;
+    send(net, mn_arp_build_request(txf, net->nif->mac, net->ip, hop));
+    return MN_SEND_PENDING;
+}
+
 uint8_t *mn_net_tx_begin(mn_net *net, const uint8_t *dst_ip, uint8_t *why)
 {
     const uint8_t *hop = mn_net_next_hop(net, dst_ip);
@@ -197,9 +242,7 @@ uint8_t *mn_net_tx_begin(mn_net *net, const uint8_t *dst_ip, uint8_t *why)
     } else {
         tx_mac = mn_arp_cache_lookup(&net->arp, hop);
         if (!tx_mac) {
-            uint16_t n = mn_arp_build_request(txf, net->nif->mac, net->ip, hop);
-            send(net, n);
-            *why = MN_SEND_PENDING;
+            *why = resolve(net, hop);
             return 0;
         }
     }

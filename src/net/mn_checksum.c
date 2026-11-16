@@ -1,6 +1,22 @@
 #include "mn_checksum.h"
 #include "mn_byteorder.h"
 
+#ifdef __mos__
+/* On the target the sum is src/hal/mn_checksum_m65.S: 13 instructions a
+ * word where the C below compiled to about 40, and it is every byte the
+ * stack sends or receives, twice. The C stays the host's, and the
+ * reference the assembly is checked against. */
+extern uint16_t mn_cs_ptr, mn_cs_len, mn_cs_sum;
+void mn_sum16_m65(void);
+
+static uint16_t sum16(const uint8_t *data, uint16_t len)
+{
+    mn_cs_ptr = (uint16_t)(uintptr_t)data;
+    mn_cs_len = len;
+    mn_sum16_m65();
+    return mn_cs_sum;
+}
+#else
 /* Accumulates in 16 bits with an end-around carry rather than summing into
  * a uint32_t. Ones-complement addition makes the two equivalent, and on the
  * 6502 it avoids dragging in 32-bit arithmetic for every packet. */
@@ -27,6 +43,7 @@ static uint16_t sum16(const uint8_t *data, uint16_t len)
 
     return sum;
 }
+#endif
 
 uint16_t mn_checksum(const uint8_t *data, uint16_t len)
 {

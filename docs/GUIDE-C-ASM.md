@@ -274,7 +274,7 @@ is 60 lines and worth reading once.
   exercises a server on the MEGA65; the gopher project's `tools/` has
   adversarial servers (slow, silent, late).
 - Protocol logic lives in `src/net/`, portable C99 with a host test suite
-  (`python3 build.py test`, 367 checks). If you extend the stack, extend
+  (`python3 build.py test`, 395 checks). If you extend the stack, extend
   the tests; the stub link in `test/` injects frames without hardware.
 
 ## 8. Extending the ABI

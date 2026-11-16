@@ -27,6 +27,15 @@ static uint16_t rcv_free(const mn_tcp *t)
     return (uint16_t)(MN_TCP_RCVBUF - t->rcv_count);
 }
 
+/* (a + b) mod MN_TCP_SNDBUF, for a below it and b at most it: one
+ * subtraction. 3072 is not a power of two, so % called the software
+ * divide on every segment sent and every acknowledgement. */
+static uint16_t snd_pos(uint16_t a, uint16_t b)
+{
+    uint16_t s = (uint16_t)(a + b);
+    return s >= MN_TCP_SNDBUF ? (uint16_t)(s - MN_TCP_SNDBUF) : s;
+}
+
 static uint16_t adv_window(const mn_tcp *t)
 {
     uint16_t w = rcv_free(t);
@@ -103,7 +112,7 @@ static MN_NOINLINE uint8_t emit(mn_tcp *t, mn_net *net, uint8_t flags, uint32_t 
     }
     if (len)
         ring_read(seg + hlen, t->xseg, t->sndbuf, MN_TCP_SNDBUF,
-                  (uint16_t)((t->snd_head + off) % MN_TCP_SNDBUF), len);
+                  snd_pos(t->snd_head, off), len);
     mn_put16(seg + 16, mn_checksum_pseudo(net->ip, t->remote_ip, MN_IPPROTO_TCP,
                                           seg, (uint16_t)(hlen + len)));
     if (flags & FL_ACK)
@@ -213,6 +222,7 @@ uint8_t mn_tcp_connect(mn_tcp *t, mn_net *net, const uint8_t *ip,
     reset_counters(t);
     t->state = MN_TCP_SYN_SENT;
     t->sent_at = now;
+    mn_net_tick(net, now);
     t->syn_pending = (uint8_t)(emit(t, net, FL_SYN, t->iss, 0, 0, 1) != MN_SEND_OK);
     return 1;
 }
@@ -244,7 +254,7 @@ uint16_t mn_tcp_send(mn_tcp *t, const uint8_t *data, uint16_t len)
         len = room;
     if (len) {
         ring_write(t->xseg, t->sndbuf, MN_TCP_SNDBUF,
-                   (uint16_t)((t->snd_head + t->snd_len) % MN_TCP_SNDBUF), data, len);
+                   snd_pos(t->snd_head, t->snd_len), data, len);
         t->snd_len = (uint16_t)(t->snd_len + len);
         t->tx_pending = 1;
     }
@@ -262,7 +272,7 @@ uint16_t mn_tcp_send_x(mn_tcp *t, uint32_t src, uint16_t len)
         len = room;
     if (len) {
         ring_write_x(t->xseg, t->sndbuf, MN_TCP_SNDBUF,
-                     (uint16_t)((t->snd_head + t->snd_len) % MN_TCP_SNDBUF), src, len);
+                     snd_pos(t->snd_head, t->snd_len), src, len);
         t->snd_len = (uint16_t)(t->snd_len + len);
         t->tx_pending = 1;
     }
@@ -359,7 +369,7 @@ static MN_NOINLINE void handle_ack(mn_tcp *t, uint32_t ack, uint16_t now)
         acked = (uint16_t)(acked - 1);
     if (acked > t->inflight)
         acked = t->inflight;
-    t->snd_head = (uint16_t)((t->snd_head + acked) % MN_TCP_SNDBUF);
+    t->snd_head = snd_pos(t->snd_head, acked);
     t->snd_len = (uint16_t)(t->snd_len - acked);
     t->inflight = (uint16_t)(t->inflight - acked);
     t->snd_una = ack;
@@ -481,6 +491,11 @@ static MN_NOINLINE void segment_input(mn_tcp *t, mn_net *net, const uint8_t *seg
         if (dlen || (flags & FL_FIN)) {
             t->stat_ooo++;
             t->ack_pending = 1;
+        } else if (SEQ_LT(seq, t->rcv_nxt)) {
+            /* An old sequence number and nothing else: the peer's probe
+             * of our shut window, or a keepalive. Either wants an ACK
+             * with our window (RFC 793 p. 69), or it times us out. */
+            t->ack_pending = 1;
         }
         handle_ack(t, ack, now);
         return;
@@ -573,6 +588,19 @@ void mn_tcp_input(void *ctx, mn_net *net, const uint8_t *ip, uint16_t len)
     }
 }
 
+/* The next hop never answered ARP: the connection cannot be made, or
+ * can no longer be carried. TIMEOUT too, which every client handles. */
+static void no_route(mn_tcp *t)
+{
+    if (t->state == MN_TCP_SYN_RCVD) {
+        t->state = MN_TCP_LISTEN;                 /* wait for another caller */
+        t->flags = 0;
+        return;
+    }
+    t->flags |= MN_TCP_F_TIMEOUT | MN_TCP_F_NOROUTE;
+    t->state = MN_TCP_CLOSED;
+}
+
 static MN_NOINLINE void poll_one(mn_tcp *t, mn_net *net, uint16_t now)
 {
     uint16_t n;
@@ -603,6 +631,10 @@ static MN_NOINLINE void poll_one(mn_tcp *t, mn_net *net, uint16_t now)
             t->sent_at = now;
             r = emit(t, net, t->state == MN_TCP_SYN_SENT ? FL_SYN : (FL_SYN | FL_ACK),
                      t->iss, 0, 0, 1);
+            if (r == MN_SEND_NOROUTE) {
+                no_route(t);
+                return;
+            }
             t->syn_pending = (uint8_t)(r != MN_SEND_OK);
         }
         return;
@@ -645,6 +677,26 @@ static MN_NOINLINE void poll_one(mn_tcp *t, mn_net *net, uint16_t now)
      * congestion window allow (5.17). */
     if (t->tx_pending && t->snd_len > t->inflight) {
         uint16_t limit = t->snd_wnd < t->cwnd ? t->snd_wnd : t->cwnd;
+        if (!limit && !t->inflight) {
+            /* The peer's window is shut and nothing is in flight to bring
+             * an update: if the one that reopens it is lost, both sides
+             * wait for ever. Probe with the last sequence number already
+             * acknowledged, which a TCP answers with its window, backing
+             * off to RTO_MAX, for as long as the window stays shut
+             * (RFC 1122 4.2.2.17). The probe carries our ACK too. */
+            if ((uint16_t)(now - t->sent_at) >= t->rto) {
+                t->sent_at = now;
+                if (t->rto < RTO_MAX) t->rto = (uint16_t)(t->rto * 2);
+                r = emit(t, net, FL_ACK, t->snd_nxt - 1, 0, 0, 0);
+                if (r == MN_SEND_NOROUTE) {
+                    no_route(t);
+                    return;
+                }
+                if (r == MN_SEND_OK)
+                    t->ack_pending = 0;
+            }
+            goto ack;
+        }
         r = MN_SEND_OK;
         while (t->snd_len > t->inflight && t->inflight < limit) {
             n = (uint16_t)(t->snd_len - t->inflight);
@@ -659,15 +711,25 @@ static MN_NOINLINE void poll_one(mn_tcp *t, mn_net *net, uint16_t now)
             t->snd_nxt += n;
             t->ack_pending = 0;
         }
+        if (r == MN_SEND_NOROUTE) {
+            no_route(t);
+            return;
+        }
         t->tx_pending = (uint8_t)(t->snd_len > t->inflight);
         if (r == MN_SEND_PENDING)
             t->tx_pending = 1;
-        return;
+        /* Nothing went (the window is full): data that came in is still
+         * owed an ACK, so on to it rather than waiting for the window. */
+        goto ack;
     }
 
     /* Queued data all acknowledged and the application wants out: FIN. */
     if (t->fin_queued && !t->fin_sent && !t->inflight && !t->snd_len) {
         r = emit(t, net, FL_ACK | FL_FIN, t->snd_nxt, 0, 0, 0);
+        if (r == MN_SEND_NOROUTE) {
+            no_route(t);
+            return;
+        }
         if (r == MN_SEND_OK) {
             t->fin_sent = 1;
             t->snd_nxt++;
@@ -678,6 +740,7 @@ static MN_NOINLINE void poll_one(mn_tcp *t, mn_net *net, uint16_t now)
         return;
     }
 
+ack:
     if (t->ack_pending) {
         if (emit(t, net, FL_ACK, t->snd_nxt, 0, 0, 0) != MN_SEND_PENDING)
             t->ack_pending = 0;
@@ -688,6 +751,7 @@ void mn_tcp_poll(mn_tcp_set *set, mn_net *net, uint16_t now)
 {
     uint8_t i;
     set->now = now;
+    mn_net_tick(net, now);
     for (i = 0; i < set->n; i++)
         poll_one(&set->sock[i], net, now);
 }
