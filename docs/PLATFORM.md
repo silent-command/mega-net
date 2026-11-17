@@ -189,6 +189,31 @@ Windows, Linux and macOS are all first-class; the gopher client still
 has `build-native.sh`. Nothing may assume a POSIX shell in a build
 path.
 
+**The compiler must have llvm-mos 742d554bf** ("Make zero page
+allocation deterministic", 2026-09-14). Without it the zero-page
+allocator ties are broken in pointer order, and the Gemini and IRC
+banks and clients came out different nearly every build from the same
+commit (gemini 5.19, irc 5.35). `~/llvm-mos` here is the 2026-04-23
+release, c798c31, with `bin/clang-23` and `bin/lld` rebuilt from that
+commit plus 742d554bf alone (2026-11-17). The release's own pair is kept
+beside them as `clang-23.orig` and `lld.orig`. The rebuilt pair gives
+every other client byte for byte what the release gave. To rebuild it:
+fetch c798c31, `git cherry-pick 742d554bf`, configure with
+`-C clang/cmake/caches/MOS.cmake -DLLVM_ENABLE_PROJECTS="clang;lld"
+-DLLVM_ENABLE_RUNTIMES= -DLLVM_BUILTIN_TARGETS= -DLLVM_RUNTIME_TARGETS=
+-DLLVM_DISTRIBUTION_COMPONENTS="clang;lld"`, then `ninja clang lld`
+(10 minutes on this Mac). `tools/repro.py` in gemini and irc builds
+twice and compares.
+
+One dependence remains: the BBS client is the same from build to
+build, but a checkout or a toolchain at a different path can give it
+another layout. 41,240 bytes here; 42,964 from a clone in a longer
+path, or with the toolchain in one. It is not 742d554bf's bug (BBS
+was stable before it) and it is not a path in the program. It is some
+other order in the compiler that follows the heap's layout. Gemini and
+IRC were the same from a second checkout and from a second toolchain
+path. Build the disk from these paths, or compare against them.
+
 ## The tools on the Mac, and how they bite
 
 `m65` (here `m65.osx`, elsewhere `m65` or `m65.exe`) talks to the
