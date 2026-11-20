@@ -7,6 +7,7 @@
 /* Brings the controller up and fills in nif. Reads the MAC from the
  * hardware. Takes about four seconds: the PHY needs that after reset. */
 void mn_eth45e100_init(mn_netif *nif);
+uint8_t mn_eth45e100_init_warm(mn_netif *nif);   /* 1 warm, 0 it had to reset */
 
 /* Raw register reads, for diagnostics. */
 uint8_t mn_eth45e100_ctrl1(void);

@@ -6,8 +6,8 @@ with a small assembly core, callable from C, assembly and BASIC 65
 through one jump table. Apache License 2.0.
 
 **Status: complete for its first applications and in use.** Three
-clients run on it, `../mega-gopher`, `../mega-ftp` and `../mega-ssh`. ABI 0.2,
-35 entries, appended only. The host suite is 395 checks. The image is
+clients run on it, `../mega-gopher`, `../mega-ftp` and `../mega-ssh`. ABI 0.3,
+36 entries, appended only. The host suite is 395 checks. The image is
 33 KB in a 40 KB window. No known defects.
 
 ## Read first

@@ -173,3 +173,32 @@ void mn_eth45e100_init(mn_netif *nif)
     nif->tx = eth_tx;
     nif->ctx = 0;
 }
+
+/* INIT_WARM's driver half: the same setup for a controller a previous
+ * program left running (the Net-Tools collection's exits do), without
+ * the reset and the PHY's 200 frames: 3.5 s of the 3.8 s a program took
+ * to reach the network (REQUIREMENTS.md 5.23). A controller held in
+ * reset (CTRL1 bit 0 reads 0: $92 after a held exit, $91 running, 5.23)
+ * gets the full init instead. Returns 1 when it was warm. */
+uint8_t mn_eth45e100_init_warm(mn_netif *nif)
+{
+    uint8_t i, v;
+
+    mn_m65_io_enable();
+    if (!(MN_PEEK(ETH_CTRL1) & 0x01)) {
+        mn_eth45e100_init(nif);
+        return 0;
+    }
+    v = MN_PEEK(ETH_CTRL3);
+    v = (uint8_t)((v & 0xdf) | 0x11);
+    MN_POKE(ETH_CTRL3, v);
+    for (i = 0; i < MN_ETH_ADDR_LEN; i++)
+        nif->mac[i] = MN_PEEK(ETH_MAC + i);
+    MN_POKE(ETH_CTRL1, 0x03);
+    MN_POKE(ETH_CTRL2, 0x03);
+    MN_POKE(ETH_CTRL2, 0x00);       /* a plain zero, as above */
+    nif->rx = eth_rx;
+    nif->tx = eth_tx;
+    nif->ctx = 0;
+    return 1;
+}

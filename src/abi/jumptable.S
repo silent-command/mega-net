@@ -52,6 +52,7 @@ mn_jumptable:
         jmp     mn_entry_udp_close      ; $42060  close socket Z
         jmp     mn_entry_udp_send       ; $42063  A/X/Y -> {ip4, port u16, ptr28, len u16}; A = 0 failed 1 sent 2 resolving
         jmp     mn_entry_udp_recv       ; $42066  A/X/Y -> {ptr28, cap u16; out: len u16, src ip4, src port u16}; A=1 if any
+        jmp     mn_entry_init_warm      ; $42069  INIT keeping a running controller (no reset, no PHY wait); X=1 if it did (0.3)
 
 ; --- register mailboxes: the C side reads mn_api_a..z and writes
 ; mn_api_ra..rz, so no C calling convention is assumed. .noinit because
@@ -124,6 +125,7 @@ mn_zp_ours:   .skip 0x70        ; our $90-$FF between calls
         ENTRY mn_entry_udp_close,   mn_api_udp_close
         ENTRY mn_entry_udp_send,    mn_api_udp_send
         ENTRY mn_entry_udp_recv,    mn_api_udp_recv
+        ENTRY mn_entry_init_warm,   mn_api_init_warm
 
 ; The status register, for the crash breadcrumbs (5.11).
         .global mn_get_p

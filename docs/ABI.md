@@ -53,7 +53,7 @@ A/X/Y. Multi-byte block fields are little-endian.
 | N | Physical | Name | In | Out | Block |
 |---|---|---|---|---|---|
 | 0 | `$42000` | INIT | — | A=0 | Resets everything. Call once, first. |
-| 1 | `$42003` | VERSION | — | A=major X=minor Y='M' Z='N' | 0.2 as of this table: entries 28-34 and the extra results of entries 8 and 11 are 0.2 |
+| 1 | `$42003` | VERSION | — | A=major X=minor Y='M' Z='N' | 0.3 as of this table: entry 35 is 0.3; entries 28-34 and the extra results of entries 8 and 11 are 0.2 |
 | 2 | `$42006` | GET_MAC | block | — | out: 6 bytes |
 | 3 | `$42009` | LINK_TX | block | A=1 sent | ptr28[3], len[2]: a raw Ethernet frame |
 | 4 | `$4200C` | LINK_RX | block | A=1 got | ptr28[3], cap[2]; out len[2] |
@@ -87,6 +87,7 @@ A/X/Y. Multi-byte block fields are little-endian.
 | 32 | `$42060` | UDP_CLOSE | Z=socket | — | |
 | 33 | `$42063` | UDP_SEND | block, Z=socket | A: 0 failed, 1 sent, 2 resolving (send again) | ip[4], port[2], ptr28[3], len[2] |
 | 34 | `$42066` | UDP_RECV | block, Z=socket | A=1 if a datagram was waiting | ptr28[3], cap[2]; out len[2], src ip[4], src port[2] |
+| 35 | `$42069` | INIT_WARM | — | A=0, X=1 warm / 0 reset after all | INIT for a controller a previous program left running: no controller reset, no 200-frame PHY wait (0.3; REQUIREMENTS.md 5.23). One held in reset (`$D6E0` bit 0 clear) gets the full INIT. Call once, first, as INIT. |
 
 A socket index past the end answers A=$FF. Every TCP entry takes the
 index in Z; a caller that never sets Z has socket 0.

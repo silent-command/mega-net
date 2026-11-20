@@ -28,7 +28,7 @@ extern char __zp_data_load_start[];
 extern char __zp_data_size[];
 
 #define MN_ABI_MAJOR 0
-#define MN_ABI_MINOR 2   /* 0.2: socket sets, listeners, UDP entries, DHCP_STATE phase and lease, stats appended (5.11-5.17) */
+#define MN_ABI_MINOR 3   /* 0.3: INIT_WARM (5.23). 0.2: socket sets, listeners, UDP entries, DHCP_STATE phase and lease, stats appended (5.11-5.17) */
 
 /* Module state lives in .bss, not zero page. llvm-mos would put anything
  * "small" in zero page, and 80 bytes for each of these is the whole
@@ -173,12 +173,12 @@ static void install_window_vectors(void)
 #endif
 }
 
-void mn_api_init(void)
+static void init(uint8_t warm)
 {
     uint16_t n = (uint16_t)(uintptr_t)__bss_size;
     uint16_t i;
 
-    install_window_vectors();          /* before anything can fault: 5.19 */
+    install_window_vectors();         /* before anything can fault: 5.19 */
 
     /* No crt0 ran: zero .bss ourselves. Mailboxes and the ZP save area
      * are .noinit and survive this. */
@@ -196,7 +196,10 @@ void mn_api_init(void)
     for (i = 0; i < n; i++)
         __zp_data_start[i] = __zp_data_load_start[i];
 
-    mn_eth45e100_init(&nif);
+    if (warm)
+        warm = mn_eth45e100_init_warm(&nif);
+    else
+        mn_eth45e100_init(&nif);
     mn_net_init(&net, &nif);
     dhcp.state = MN_DHCP_IDLE;
     dhcp.sock = 0xff;
@@ -210,7 +213,19 @@ void mn_api_init(void)
     mn_tcp_init(&tcpset, tcps, MN_ABI_TCP_SOCKETS, &net, pool_base);
     mn_net_set_pool(&net, pool_base + (uint32_t)MN_ABI_TCP_SOCKETS * MN_TCP_SOCKET_XMEM);
     last_frame = MN_FRAMECOUNT;
-    ret(0, 0, 0, 0);
+    ret(0, warm, 0, 0);
+}
+
+void mn_api_init(void)
+{
+    init(0);
+}
+
+/* INIT without resetting a controller that is already running (5.23);
+ * X=1 if it was, 0 if it had to reset it after all. */
+void mn_api_init_warm(void)
+{
+    init(1);
 }
 
 void mn_api_version(void)

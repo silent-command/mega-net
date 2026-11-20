@@ -1193,3 +1193,69 @@ previous Net-Tools disk: down 1.092 s, up 2.107 s; with this image
 0.976 s and 1.775 s (pyftpdlib's figures, one run each). The no-route
 and zero-window paths have not been seen on the machine; the host
 checks are the evidence.
+
+### 5.23 A controller left running across a reset: 0.3 s to the network instead of 3.8 (2026-11-20)
+
+The question was mega-menu's: would a network the menu brought up save
+the programs it launches any time? Every program switch in the
+collection is a reset, every exit holds `$D6E0` at 0, and every INIT
+resets the controller again and waits 200 frames for the PHY (5.2).
+
+`mega-menu/spike/warmtest.c` (built by `spike/build_warmtest.py`, run
+by `spike/warmtest.py`) is one trial per run, leaving as a client
+launched from the menu leaves: the handoff block says LAUNCH, the
+KERNAL's reset entry, the collection's AUTOBOOT.C65 runs it again. It
+loads MEGANET from its disk with mega-ntp's loader and times load,
+INIT, DHCP and one DNS lookup (`pool.ntp.org`, through the router) in
+frames, logging to colour RAM at `$FF84000`. The image is the
+warm-probe build (`build.py warmprobe`, `-DMN_WARM_PROBE`): INIT
+called with A=`'W'` skips the CTRL1 reset and the 200 frames. The
+shipped image was unchanged (same SHA-256). The probe then became
+`INIT_WARM`, entry 35 (ABI 0.3), with one addition: a controller found
+held in reset (`$D6E0` bit 0 clear) gets the full INIT after all, and
+X says which it was. Three modes in turn, eight
+trials each, on the R6 (60 Hz) behind a powerline Ethernet extender:
+
+| Mode | Load | INIT | DHCP | DNS | Total (median) |
+|---|---|---|---|---|---|
+| cold: today's exit and INIT | 0.13 | 3.50 | 0.12 | 0.05 | **3.80 s** |
+| warm INIT, the previous trial's lease adopted (SET_IP, SET_DNS) | 0.13 | 0.00 | — | 0.05 | **0.18 s** |
+| warm INIT, a fresh DHCP exchange | 0.13 | 0.00 | 0.13 | 0.05 | **0.32 s** |
+
+All 24 trials succeeded. One cold trial's DHCP took 3.45 s (a
+retransmit, the link not quite up after the 200 frames); no warm one
+needed more than 0.17 s. Across the 16 resets made with the controller
+running: no event in the stack's counter (`window_irqs` 0), none in the
+client's own vector stub, and the dispatcher and the ROM's reset were
+undisturbed. The 22 bytes saved at `$FF87FD0` (below the handoff block)
+and the image in bank 4 were intact after every reset.
+
+So the 3.5 s is the controller reset and the PHY wait, not DHCP: a
+program that finds the controller running needs neither, and a fresh
+DHCP exchange then costs 0.13 s more than adopting a saved lease.
+Loading MEGANET from the disk is 0.13 s.
+
+The spike also met ssh 5.6's miscompile again: a two-line helper that
+lpoke'd a u16's two bytes was compiled to increment a word it never used
+and write both bytes to the first address, so every timing read zero.
+`orphan_rmw.py` flags it; the spike's build runs it now.
+
+**The feature.** `INIT_WARM` above; the collection's exits leave the
+controller running when the handoff block is there, the clients the
+dispatcher started call `INIT_WARM`, and the menu releases the
+controller at a cold start (mega-menu README, "The network stays up
+between programs"). From the key in the menu to the client's lease:
+1.9-3.4 s for all eight clients; NTP 2.2 s warm against 5.7 s with
+the controller forced into reset first. Two clients had no room for
+the change as first written: deciding inline in the bring-up, which
+LTO folds into `main`, reshaped the whole of `main` and cost Gemini
+280 bytes for a dozen lines. The decision moved behind two `noinline`
+helpers in each client's `m65_exit.c` (`m65_net_hold`,
+`m65_net_init_entry`), which cost Gemini 48; SFTP still came out 97
+bytes under its 1 KB floor and moved its upload block to the high
+window (sftp 5.7).
+
+**Carried.** Sixteen warm resets in the spike and about thirty
+launches since are a small sample for 5.16's rare event; the clients
+keep their vector stubs (5.18) and `window_irqs` is the place to look.
+FTP and Gopher still run on the KERNAL's vectors, as they did before.

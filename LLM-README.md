@@ -44,8 +44,8 @@ today: a gopher browser, an FTP client and an SSH client.
   assumed.
 - **Apache License 2.0.**
 
-**Status: complete for its first applications and in use.** ABI 0.2,
-35 entries. The image is 33 KB in a 40 KB window. No known defects.
+**Status: complete for its first applications and in use.** ABI 0.3,
+36 entries. The image is 33 KB in a 40 KB window. No known defects.
 
 ## Using it from BASIC 65
 

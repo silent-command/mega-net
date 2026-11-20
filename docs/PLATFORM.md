@@ -87,6 +87,11 @@ job or a bank must see.
    reset (`$D6E0 = 0`, three frames) before INIT: cheap, and a crash
    then lands in a stub that records where. mega-net 5.16, 5.18, 5.20;
    ssh 5.8, 5.19.
+   The one exception: a program the Net-Tools menu launched finds the
+   controller running, left so by the previous program's exit, and
+   skips the hold and calls INIT_WARM, which saves the 3.5 s of the
+   controller reset and PHY wait (mega-net 5.23; mega-menu README).
+   Its own vectors come first all the same.
 2. **`STZ` stores the Z register.** llvm-mos compiles every store of
    zero as `STZ`. Any assembly that loads Z ends with `LDZ #0` before C
    runs again. mega-net 5.4, `spike_stz.c`. When a measurement makes no

@@ -56,6 +56,7 @@
 #define MEGANET_UDP_CLOSE   0x2060
 #define MEGANET_UDP_SEND    0x2063
 #define MEGANET_UDP_RECV    0x2066
+#define MEGANET_INIT_WARM   0x2069      /* 0.3: INIT keeping a running controller (5.23) */
 
 #define MEGANET_TCP_CLOSED 0
 #define MEGANET_TCP_SYN_SENT 1
