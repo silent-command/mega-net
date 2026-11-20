@@ -7,7 +7,9 @@
     python3 tools/mon.py t1 / t0      halt / resume the CPU
 
 Any monitor command is passed through; the reply is printed. The port
-is /dev/cu.usbserial-* unless MEGA65_PORT is set. macOS needs the
+is found as device.py's port() finds it: MEGA65_PORT, else a local
+/dev/cu.usbserial-*1, else the keyboard bridge (tcp#host:port, e.g.
+MEGA65_PORT=tcp#pi3:4510). macOS needs the
 IOSSIOSPEED ioctl for 2,000,000 baud; Linux uses termios directly;
 Windows uses pyserial (pip install pyserial) and MEGA65_PORT=COMn.
 REQUIREMENTS.md 5.11."""
@@ -26,10 +28,43 @@ class _PySerialPort:
     def write(self, data): self.s.write(data)
     def read(self, n): return self.s.read(n)
 
+class _TcpPort:
+    """The monitor through mega-keybridge's TCP port: the same two
+    operations, non-blocking like the serial descriptor."""
+    def __init__(self, port):
+        import socket
+        host, _, num = port.split("#", 1)[1].rpartition(":")
+        try:
+            self.s = socket.create_connection((host, int(num)), timeout=5)
+        except OSError as e:
+            sys.exit("cannot reach the MEGA65 at %s: %s" % (port, e))
+        self.s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        self.s.setblocking(False)
+    def write(self, data):
+        self.s.setblocking(True)             # all of it, like os.write on the tty
+        try:
+            self.s.sendall(data)
+        finally:
+            self.s.setblocking(False)
+    def read(self, n):
+        try:
+            data = self.s.recv(n)
+        except BlockingIOError:
+            return b""
+        if not data:
+            sys.exit("the bridge closed the connection (another client, or the MEGA65 is gone)")
+        if data.startswith(b"mega-keybridge:"):
+            sys.exit(data.decode(errors="replace").strip())
+        return data
+
 def open_port():
-    port = os.environ.get("MEGA65_PORT") or (glob.glob("/dev/cu.usbserial-*") + glob.glob("/dev/ttyUSB*") + [None])[0]
-    if not port:
-        sys.exit("no serial port found; set MEGA65_PORT (COM5 on Windows)")
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import device
+    port = device.port()
+    if device.is_tcp(port):
+        return _TcpPort(port)
+    if termios is not None and not os.path.exists(port):
+        sys.exit("no MEGA65 at %s; set MEGA65_PORT (COM5 on Windows, tcp#host:4510 for the bridge)" % port)
     if termios is None:
         try:
             return _PySerialPort(port)
@@ -55,8 +90,8 @@ def open_port():
 def command(fd, cmd, wait=0.4, gap=0.15):
     """Sends cmd; returns what arrives until `gap` seconds of silence
     (or `wait` seconds with nothing at all)."""
-    write = fd.write if isinstance(fd, _PySerialPort) else (lambda b: os.write(fd, b))
-    read = fd.read if isinstance(fd, _PySerialPort) else (lambda n: os.read(fd, n))
+    write = (lambda b: os.write(fd, b)) if isinstance(fd, int) else fd.write
+    read = (lambda n: os.read(fd, n)) if isinstance(fd, int) else fd.read
     write((cmd + "\r").encode())
     out = b""
     end = time.time() + wait

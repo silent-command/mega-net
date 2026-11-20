@@ -220,10 +220,26 @@ path. Build the disk from these paths, or compare against them.
 machine over the serial monitor; `mega65_ftp` moves files to the SD
 card; `mega-net/tools/mon.py` is a monitor client with memory reads,
 breakpoints and watchpoints; `mega-net/tools/device.py` finds the tool
-on any host. `MEGA65_PORT=/dev/cu.usbserial-21301` pins the port when
-autodiscovery picks the wrong FTDI channel. The name follows the USB
-socket (it was `-23201` until 2026-11-16): `ls /dev/cu.usbserial*`
-shows two channels, and the monitor is the one ending in 1.
+on any host and where the machine is. `MEGA65_PORT` pins the port;
+unset, the tools take a USB serial port on this computer if there is
+one -- `ls /dev/cu.usbserial*` shows two channels, the monitor is the
+one ending in 1, and the name follows the USB socket (`-21301` since
+2026-11-16) -- else the keyboard bridge, `tcp#pi3:4510`
+(`MEGA65_BRIDGE` changes the host). Since 2026-11-17 the JTAG cable is
+on that Pi (mega-keybridge/README.md). Through the bridge:
+
+- **Use the tcp-fixed tools**: `export MEGA65_TOOLS=…/mega-keybridge/mac/bin`.
+  The stock `m65.osx` and `mega65_ftp.osx` hang right after connecting
+  over TCP (a blocking read in `m65common.c`, macOS only).
+- **macOS Local Network permission**: until the app the tools run from
+  (Terminal, VS Code) is allowed under Privacy & Security → Local
+  Network, they get "No route to host". Meanwhile
+  `ssh -N -L 4510:127.0.0.1:4510 pi@pi3 &` and
+  `MEGA65_PORT=tcp#127.0.0.1:4510` go round it.
+- **One client at a time**: a second connection is refused with
+  `mega-keybridge: monitor busy`, and the Pi's keyboard pauses while a
+  client is connected. `port_guard` still ends stale drivers for this.
+- **Bitstreams** (`m65 -b`/`-q`) need JTAG itself: run `m65` on the Pi.
 
 - **Typing.** `m65 -T text` types a line and RETURN; `-t` types without,
   with escapes `~M` RETURN, `~D ~U ~L ~R` cursor, `~H` HOME, `~T`

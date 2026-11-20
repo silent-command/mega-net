@@ -19,7 +19,7 @@ Matrix codes (row*8+column): the C64's 0-63 -- 0 DEL, 1 RETURN, 2 right,
 64 NO SCROLL, 65 TAB, 66 ALT, 67 HELP, 68 F9, 69 F11, 70 F13, 71 ESC.
 There is no cursor-up code: up is SHIFT with down, and with MEGA held
 the keyboard sends down ($11) for both, marking SHIFT in $D611 instead
-(mega-irc 5.26). Needs MEGA65_PORT, as mon.py does."""
+(mega-irc 5.26). Finds the MEGA65 as mon.py does, serial or bridge."""
 import os, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mon
@@ -32,6 +32,9 @@ def send(fd, line):
     write lost a release once and the client looked dead, every key
     after it a MEGA chord (mega-irc 5.26)."""
     data = (line + "\r").encode()
+    if not isinstance(fd, int):              # the bridge's TCP port (or pyserial)
+        fd.write(data)
+        return
     while data:
         try: n = os.write(fd, data)
         except BlockingIOError: n = 0

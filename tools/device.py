@@ -14,16 +14,40 @@ platform's spelling.
                                            save a memory range (hex)
     python3 tools/device.py -- <args>      pass arguments through to m65
 
-Override discovery with MEGA65_M65 (path to the binary) and MEGA65_PORT
-(serial port; otherwise m65 autodiscovers).
+Where the machine is (port()): MEGA65_PORT if set; else a USB serial port
+plugged into this computer (the monitor is the FTDI channel ending in 1);
+else the keyboard bridge on the network, tcp#$MEGA65_BRIDGE (default
+pi3:4510; mega-keybridge/README.md). Which tools (find_tool()): the
+directory MEGA65_TOOLS first -- on a Mac, point it at builds whose
+tcp# mode works (mega-keybridge/mac), as the stock .osx ones hang on it --
+then MEGA65_M65 for m65, then the PATH and the usual places.
 """
 
+import glob
 import os
 import platform
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+DEFAULT_BRIDGE = "pi3:4510"
+
+
+def port():
+    """The -l argument that reaches the MEGA65."""
+    p = os.environ.get("MEGA65_PORT")
+    if p:
+        return p
+    local = sorted(glob.glob("/dev/cu.usbserial-*1")) \
+        or sorted(glob.glob("/dev/serial/by-id/*FTDI*if01-port0"))
+    if local:
+        return local[0]
+    return "tcp#" + os.environ.get("MEGA65_BRIDGE", DEFAULT_BRIDGE)
+
+
+def is_tcp(p):
+    return p.lower().startswith("tcp")
 
 SYSTEM = platform.system()
 
@@ -48,24 +72,37 @@ if SYSTEM == "Windows":
     ]
 
 
-def find_m65():
-    """Returns the path to the m65 binary, or None."""
-    override = os.environ.get("MEGA65_M65")
+def find_tool(tool="m65"):
+    """Returns the path to an m65-tools binary ("m65", "mega65_ftp"), or None."""
+    names = [n.replace("m65", tool, 1) for n in BINARY_NAMES]
+    tools_dir = os.environ.get("MEGA65_TOOLS")
+    if tools_dir:
+        for name in names:
+            cand = Path(tools_dir) / name
+            if cand.is_file() and os.access(cand, os.X_OK):
+                return str(cand)
+
+    override = os.environ.get("MEGA65_M65") if tool == "m65" else None
     if override:
         p = Path(override)
         return str(p) if p.is_file() else None
 
-    for name in BINARY_NAMES:
+    for name in names:
         found = shutil.which(name)
         if found:
             return found
 
     for d in SEARCH_DIRS:
-        for name in BINARY_NAMES:
+        for name in names:
             cand = d / name
             if cand.is_file() and os.access(cand, os.X_OK):
                 return str(cand)
     return None
+
+
+def find_m65():
+    """Returns the path to the m65 binary, or None."""
+    return find_tool("m65")
 
 
 def m65(*args, timeout=60):
@@ -78,11 +115,7 @@ def m65(*args, timeout=60):
             "Install mega65-tools, or set MEGA65_M65 to the binary."
         )
 
-    cmd = [binary]
-    port = os.environ.get("MEGA65_PORT")
-    if port:
-        cmd += ["-l", port]
-    cmd += list(args)
+    cmd = [binary, "-l", port()] + list(args)
 
     try:
         return subprocess.run(cmd, capture_output=True, text=True,

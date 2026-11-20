@@ -12,10 +12,31 @@
 #   row 23                                 one screen row as text
 #   scr                                    the non-blank rows
 #
-# MEGA65_PORT pins the serial port; the m65 tool is found by name, .osx
-# or not.
+# Where the machine is, as tools/device.py finds it: MEGA65_PORT if set;
+# else a USB serial port on this computer (the monitor is the FTDI
+# channel ending in 1); else the keyboard bridge, tcp#$MEGA65_BRIDGE
+# (default pi3:4510; mega-keybridge/README.md). Every m65 call gets -l,
+# since autodiscovery can't find a bridge. The tools are found in
+# MEGA65_TOOLS first -- on a Mac, the builds in mega-keybridge/mac/bin,
+# as the stock .osx ones hang in tcp# mode -- then by name, .osx or not.
 
-export MEGA65_PORT="${MEGA65_PORT:-/dev/cu.usbserial-21301}"
+if [ -z "$MEGA65_PORT" ]; then
+  for _p in /dev/cu.usbserial-*1 /dev/serial/by-id/*FTDI*if01-port0; do
+    [ -e "$_p" ] && { MEGA65_PORT=$_p; break; }
+  done
+  MEGA65_PORT=${MEGA65_PORT:-tcp#${MEGA65_BRIDGE:-pi3:4510}}
+fi
+export MEGA65_PORT
+case "$MEGA65_PORT" in tcp*|TCP*) M65_TCP=1 ;; *) M65_TCP= ;; esac
+
+_m65tool() {   # _m65tool m65 -> the binary to run
+  local n
+  for n in "$1.osx" "$1"; do
+    [ -n "$MEGA65_TOOLS" ] && [ -x "$MEGA65_TOOLS/$n" ] && { echo "$MEGA65_TOOLS/$n"; return; }
+  done
+  for n in "$1.osx" "$1"; do command -v "$n" >/dev/null 2>&1 && { echo "$n"; return; }; done
+  echo "$1"
+}
 
 # port_guard: before touching the machine. M65Connect's driver is the
 # user's and is never touched: if it holds the port, say so and stop.
@@ -23,9 +44,12 @@ export MEGA65_PORT="${MEGA65_PORT:-/dev/cu.usbserial-21301}"
 # scripts; end it, and the shell that would only start another, unless
 # that shell is an ancestor of this one. Then check the adapter is not
 # wedged (EINVAL on its own attributes), which only a power cycle clears.
+# Through the bridge there is no local adapter: a stale driver would
+# hold the bridge's one client slot, so those still go, and the check is
+# that the bridge answers at all.
 port_guard() {
   local p anc="" d pp
-  if lsof -t "$MEGA65_PORT" 2>/dev/null | xargs -n1 ps -o command= -p 2>/dev/null | grep -q M65Connect; then
+  if [ -z "$M65_TCP" ] && lsof -t "$MEGA65_PORT" 2>/dev/null | xargs -n1 ps -o command= -p 2>/dev/null | grep -q M65Connect; then
     echo "port_guard: M65Connect holds $MEGA65_PORT; quit it first" >&2; return 2; fi
   p=$$; while [ "$p" -gt 1 ]; do anc=" $p$anc"; p=$(ps -o ppid= -p $p | tr -d ' '); done
   for d in $(pgrep -x m65.osx; pgrep -x m65; pgrep -f 'mega65_ftp(\.osx)?$'); do
@@ -35,19 +59,25 @@ port_guard() {
     kill -TERM $d 2>/dev/null && echo "port_guard: stopped stale driver $d ($(ps -o command= -p $d 2>/dev/null | cut -c1-40))"
   done
   sleep 1
+  if [ -n "$M65_TCP" ]; then
+    local hp=${MEGA65_PORT#*#}
+    nc -z -w 3 "${hp%:*}" "${hp##*:}" >/dev/null 2>&1 \
+      || { echo "port_guard: no keyboard bridge at $hp (is the Pi up?)" >&2; return 3; }
+    return 0
+  fi
   python3 -c 'import os,sys,termios; f=os.open(sys.argv[1],os.O_RDWR|os.O_NOCTTY|os.O_NONBLOCK); termios.tcsetattr(f,termios.TCSANOW,termios.tcgetattr(f))' "$MEGA65_PORT" 2>/dev/null \
     || { echo "port_guard: the adapter is wedged; power-cycle the MEGA65" >&2; return 3; }
 }
-if command -v m65.osx >/dev/null 2>&1; then M65=m65.osx; else M65=m65; fi
-if command -v mega65_ftp.osx >/dev/null 2>&1; then M65FTP=mega65_ftp.osx; else M65FTP=mega65_ftp; fi
+M65=$(_m65tool m65)
+M65FTP=$(_m65tool mega65_ftp)
 
 # The screen as text, colour codes stripped. Row N is output line N+2.
-raw() { perl -e 'alarm 20; exec @ARGV' $M65 -S0 2>/dev/null | python3 -c "import sys,re; print(re.sub(r'\x1b\[[0-9;]*m','',sys.stdin.read()))"; }
+raw() { perl -e 'alarm 20; exec @ARGV' $M65 -l "$MEGA65_PORT" -S0 2>/dev/null | python3 -c "import sys,re; print(re.sub(r'\x1b\[[0-9;]*m','',sys.stdin.read()))"; }
 scr() { raw | python3 -c "import sys; t=sys.stdin.read().split(chr(10)); [print('  |'+l[:79].rstrip()) for l in t[1:51] if l.strip()]"; }
 row() { raw | sed -n "$((${1:-23}+2))p" | cut -c1-79; }
-type_line() { perl -e 'alarm 30; exec @ARGV' $M65 -T "$1" >/dev/null 2>&1; }
-type_keys() { perl -e 'alarm 30; exec @ARGV' $M65 -t "$1" >/dev/null 2>&1; }
-reset() { perl -e 'alarm 20; exec @ARGV' $M65 -F >/dev/null 2>&1; }
+type_line() { perl -e 'alarm 30; exec @ARGV' $M65 -l "$MEGA65_PORT" -T "$1" >/dev/null 2>&1; }
+type_keys() { perl -e 'alarm 30; exec @ARGV' $M65 -l "$MEGA65_PORT" -t "$1" >/dev/null 2>&1; }
+reset() { perl -e 'alarm 20; exec @ARGV' $M65 -l "$MEGA65_PORT" -F >/dev/null 2>&1; }
 
 # wait_for PATTERN [MAXSEC]: polls once a second; case-insensitive, since
 # the text screenshot renders a RAM font as the uppercase set.
