@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2026 Justin Cameron
+# SPDX-License-Identifier: Apache-2.0
 """Cross-platform build driver for mega-net.
 
 The stack targets the MEGA65, but the work happens on a development host,

@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 ; The 45GS02 STZ hazard, in twelve bytes. llvm-mos compiles "store zero"
 ; as STZ, which on this CPU stores the Z register. Load Z, then let C
 ; store a zero, and the zero is not a zero.

@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* Lease renewal against the real router, without waiting half a lease:
  * once bound, the lease clock inside the image is set to a minute before
  * T1, then T2, then expiry, by DMA into the DHCP state (its layout comes

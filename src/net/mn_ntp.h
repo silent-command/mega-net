@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* SNTP client (RFC 4330): one request, one reply, the time. Plus the
  * arithmetic to turn seconds-since-1900 into a calendar date. */
 #ifndef MN_NTP_H

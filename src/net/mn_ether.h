@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 #ifndef MN_ETHER_H
 #define MN_ETHER_H
 

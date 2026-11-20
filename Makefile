@@ -1,3 +1,5 @@
+# Copyright 2026 Justin Cameron
+# SPDX-License-Identifier: Apache-2.0
 # mega-net
 #
 # A convenience wrapper. The build itself lives in build.py, which is the

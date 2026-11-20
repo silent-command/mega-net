@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* Step 4 acceptance, second half: DHCP, then resolve pool.ntp.org, then
  * SNTP, then set the RTC. Status at $1400. UTC offset of the host, in
  * minutes, baked in at build time: -240. */

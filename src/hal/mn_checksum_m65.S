@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 ; The RFC 1071 sum on the 45GS02, for mn_checksum.c's sum16 on the
 ; target: the C, compiled, spent about 40 instructions a 16-bit word;
 ; this spends 13. It is every byte the stack sends or receives, twice:

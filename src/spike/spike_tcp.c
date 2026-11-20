@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* Step 5 acceptance: two TCP fetches through the table. First a server
  * on the development host (192.168.1.232:7070) that sends 5,000 known bytes
  * -- more than the 4 KB ring, so the window path runs. Then a real

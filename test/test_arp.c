@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* Written before the implementation, in step 1, so that ARP had a
  * target; green since step 3. The expected bytes are what tcpdump shows
  * for a real request. */

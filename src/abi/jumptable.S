@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 ; The mega-net ABI: a jump table at $2000 (physical $42000) and the
 ; prologue/epilogue every entry passes through.
 ;

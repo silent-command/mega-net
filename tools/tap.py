@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2026 Justin Cameron
+# SPDX-License-Identifier: Apache-2.0
 """Press keys on the MEGA65 by keyboard-matrix code, which reaches what
 `m65 -t` cannot: F9-F14, and MEGA or CTRL held with another key.
 

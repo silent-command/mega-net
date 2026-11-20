@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* IPv4 headers: build, validate, read. No options support on transmit;
  * received headers with options are honoured through the IHL field. */
 #ifndef MN_IPV4_H

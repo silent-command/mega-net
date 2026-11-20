@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 ; IRQ witness: the KERNAL's IRQ entry chains through ($0314). Point that
 ; at us, count, and continue into the original handler. Runs after the
 ; KERNAL entry has saved the registers; INC only touches flags.

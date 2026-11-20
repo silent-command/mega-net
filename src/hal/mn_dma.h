@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* DMAgic copy between 28-bit addresses.
  *
  * The 45E100's frame buffer lives at $FFDE800, outside anything the 6502

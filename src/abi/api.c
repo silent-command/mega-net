@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* The C side of the ABI. Each function reads its arguments from the
  * mailboxes jumptable.S filled and leaves results in mn_api_r*. Nothing
  * here touches the caller's memory through the CPU -- pointers arriving

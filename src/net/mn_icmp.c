@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 #include "mn_icmp.h"
 #include "mn_ether.h"
 #include "mn_ipv4.h"

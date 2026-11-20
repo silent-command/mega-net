@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 ; Far-call trampoline for C and assembly callers.
 ;
 ; Lives at $1600, in block 0, which is never remapped: the stack reserves

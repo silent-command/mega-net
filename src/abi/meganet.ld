@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* Link script for the mega-net stack image: a raw, headerless binary
  * that lives in bank 4 and is executed with bank 4 mapped over CPU
  * $2000-$BFFF. It is loaded at physical $42000 by

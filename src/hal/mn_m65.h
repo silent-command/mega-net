@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* MEGA65 target-side primitives. Target only -- never included by src/net/.
  *
  * Everything here is a memory-mapped register or a fixed idiom carried

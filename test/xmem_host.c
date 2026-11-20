@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* The socket-buffer pool on the host: an array standing in for attic RAM.
  * Addresses outside the pool are a test bug, and abort. The 28-bit side
  * of copy_in/copy_out is a pool address too on the host. */

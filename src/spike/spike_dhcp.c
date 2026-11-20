@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* Step 4 acceptance, part one: get an address from the LAN's DHCP server
  * and keep answering ping on it. Status at $1400. */
 #include <stdint.h>

@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* TCP: a set of sockets, each an active or passive connection. A receive
  * ring the application drains at its own pace, a stop-and-wait sender,
  * and a state machine driven from poll. Designed around three lessons

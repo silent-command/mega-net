@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2026 Justin Cameron
+# SPDX-License-Identifier: Apache-2.0
 """Talk to the MEGA65 serial monitor directly (no pyserial needed).
 
     python3 tools/mon.py r            registers: PC, A, X, Y, Z, B, SP, MAPL/MAPH...

@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* A netif backed by memory instead of hardware.
  *
  * Tests inject synthetic frames with stub_link_inject() and inspect whatever

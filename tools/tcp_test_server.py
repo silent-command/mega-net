@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2026 Justin Cameron
+# SPDX-License-Identifier: Apache-2.0
 """A TCP peer for the hardware test: accepts a connection, reads one
 request line, sends 5,000 known bytes, closes its side, and logs what it
 saw. Cross-platform, needs no root.

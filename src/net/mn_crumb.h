@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* Breadcrumbs: a byte written at points along a call's path into a
  * pinned location, so that after a crash the monitor can say how far the
  * call got without a breakpoint perturbing its timing (5.11). Only in the

@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* Time series of the stack's counters around DHCP_START, one 16-byte
  * sample per second at $1420 + 16*n (n < 24), plus the DHCP state. */
 #include <stdint.h>

@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* Big-endian (network order) accessors.
  *
  * These are byte-at-a-time on purpose. The 6502 is little-endian and

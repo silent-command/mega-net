@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* 45E100 driver. Every sequence here is from REQUIREMENTS.md 5.1, which
  * was read out of the earlier stack's driver rather than guessed. The one
  * deliberate departure is timing: that driver's waits spin on a VIC-II raster

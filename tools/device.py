@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2026 Justin Cameron
+# SPDX-License-Identifier: Apache-2.0
 """Locate and drive the MEGA65 from any development host.
 
 The MEGA65 cross-development tool ships under a different name on each

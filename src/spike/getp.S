@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 ; uint8_t mn_get_p(void): the processor status register, so C can see
 ; whether interrupts are enabled (bit 2 clear) after an ABI call.
         .section .text,"ax",@progbits

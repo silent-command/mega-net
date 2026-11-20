@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2026 Justin Cameron
+# SPDX-License-Identifier: Apache-2.0
 """Build a .d81 for BASIC callers: the stack image and the trampoline as
 PRG files (two-byte load address first) so BASIC 65's BLOAD puts them
 where the ABI expects -- MEGANET at $2000 in bank 4, TRAMP at $1600.

@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* Attic RAM under DMA: when do reads come back stale? For each value of
  * the cache register $BFFFFF2 (left alone, then $00 $20 $40 $60 $80 $E0):
  *   A. write 4 KB by DMA, read it all back: mismatches;

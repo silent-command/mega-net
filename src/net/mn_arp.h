@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* ARP over Ethernet for IPv4 (RFC 826): build requests and replies,
  * recognise requests for our address. Resolution and caching live one
  * layer up, with IPv4, which is what needs them. */

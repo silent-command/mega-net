@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* The 45E100 Ethernet controller as an mn_netif. Target only. */
 #ifndef MN_ETH45E100_H
 #define MN_ETH45E100_H

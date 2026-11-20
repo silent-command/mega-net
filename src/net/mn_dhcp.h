@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* DHCP client (RFC 2131/2132), as a state machine driven by poll. Time
  * is whatever tick the caller passes -- on the MEGA65, the frame counter
  * -- so this file knows nothing about hardware. */

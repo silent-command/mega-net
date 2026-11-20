@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* A deliberately tiny test framework. Host-only: it uses stdio, which the
  * stack core never does. */
 #ifndef MN_TEST_H

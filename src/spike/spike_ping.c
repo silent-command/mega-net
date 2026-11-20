@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* Step 3 acceptance: load the stack, give it an address, and poll.
  * The witness is `ping` from the development host. Status at $1400. */
 #include <stdint.h>

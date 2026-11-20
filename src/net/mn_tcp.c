@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 #include "mn_tcp.h"
 #include "mn_xmem.h"
 #include "mn_byteorder.h"

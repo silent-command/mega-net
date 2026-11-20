@@ -1,3 +1,5 @@
+# Copyright 2026 Justin Cameron
+# SPDX-License-Identifier: Apache-2.0
 # Driving the MEGA65 from a shell script: poll for the change you expect
 # instead of sleeping fixed seconds. Source this file. docs/PLATFORM.md
 # says what the tools can and cannot do; in short: type lowercase only,

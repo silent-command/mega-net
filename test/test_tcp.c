@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 #include "mn_test.h"
 #include <string.h>
 #include "../src/net/mn_net.h"

@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 #include "../net/mn_xmem.h"
 #include "mn_m65.h"
 #include "mn_dma.h"

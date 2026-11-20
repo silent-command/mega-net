@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* The network layer: one interface, one IPv4 address, a small ARP cache,
  * a few UDP sockets, and a poll that pulls a frame and dispatches it.
  * Everything above the link is driven from here. Nothing blocks. */

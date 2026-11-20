@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2026 Justin Cameron
+# SPDX-License-Identifier: Apache-2.0
 """Drives spike_server on the MEGA65: two TCP echo lines on 6400, a third
 caller refused while both are busy, then a UDP echo on 6401.
 

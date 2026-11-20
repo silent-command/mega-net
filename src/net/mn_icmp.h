@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* ICMP, as much as answering ping needs: recognise an echo request and
  * build the echo reply frame. */
 #ifndef MN_ICMP_H

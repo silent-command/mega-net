@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* Bulk memory outside the image: the socket buffers live here, so that
  * a socket costs the 40 KB window a few dozen bytes of state rather than
  * five kilobytes of rings (R-15). On the MEGA65 the pool is attic RAM or

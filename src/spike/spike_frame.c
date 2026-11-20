@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* Step 2 spike: one raw frame out, one in, on real hardware.
  *
  * This is a throwaway. It proves the 45E100 path -- DMA to and from the

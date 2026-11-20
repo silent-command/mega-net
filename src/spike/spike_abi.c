@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* R-13 acceptance spike: the step 2 experiment again, but every frame
  * goes through the banked stack and its jump table instead of a driver
  * linked into this program.

@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* DNS resolver: one A-record lookup at a time, driven by poll. */
 #ifndef MN_DNS_H
 #define MN_DNS_H

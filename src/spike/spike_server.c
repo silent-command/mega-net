@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* Step 6 acceptance: the MEGA65 as a server. Two sockets listen on port
  * 6400 and echo what they receive, listening again when a caller hangs
  * up; a UDP socket on 6401 echoes datagrams. A third TCP caller while

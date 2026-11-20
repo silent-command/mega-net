@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* Regression demonstrator for REQUIREMENTS.md 5.4: on the 45GS02, a
  * compiler zero-store (STZ) writes the Z register. Expected at $1400:
  *   'S','Z', then 00 (Z clear), then 83 (Z set), then 00 (Z cleared).

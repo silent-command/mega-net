@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* A C caller's interrupt vectors, taken from the KERNAL. See the note
  * in meganet.h and REQUIREMENTS.md 5.18. Uses lpoke and lcopy from
  * mega65-libc, which every llvm-mos client here links. */

@@ -1,3 +1,5 @@
+/* Copyright 2026 Justin Cameron
+ * SPDX-License-Identifier: Apache-2.0 */
 /* The trampoline is a raw binary at $1600: the page the stack reserves in
  * every client (REQUIREMENTS.md 5.10). Pure assembly: no C runtime, no
  * libraries. */
